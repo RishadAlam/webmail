@@ -8,6 +8,7 @@ import {
     ChevronDown,
     ChevronLeft,
     ChevronRight,
+    Download,
     CircleHelp,
     FilePenLine,
     Inbox,
@@ -42,6 +43,7 @@ import {
 import { Brand, IconButton, Sheet } from '@/components/postroom/ui';
 import { useCompose } from '@/components/postroom/compose';
 import { useMailNavigation } from '@/lib/mail-navigation';
+import { updateAppearance } from '@/hooks/use-appearance';
 const folders = [
     ['inbox', 'Inbox', Inbox],
     ['starred', 'Starred', Star],
@@ -78,6 +80,9 @@ export default function MailPage(props: MailProps) {
         [help, setHelp] = useState(false),
         [searchOptions, setSearchOptions] = useState(false),
         [mobileSearch, setMobileSearch] = useState(false);
+    const [purgeIds, setPurgeIds] = useState<number[]>([]);
+    const [purgeConfirmation, setPurgeConfirmation] = useState('');
+    const [purgeError, setPurgeError] = useState('');
     useEffect(() => {
         const syncSearch = () =>
             setMobileSearch(
@@ -177,20 +182,15 @@ export default function MailPage(props: MailProps) {
             });
         }
     }, [thread?.id, navigating]);
-    useEffect(() => {
-        const dark =
-            prefs.theme === 'dark' ||
-            (prefs.theme === 'system' &&
-                matchMedia('(prefers-color-scheme: dark)').matches);
-        document.documentElement.classList.toggle('dark', dark);
-    }, [prefs.theme]);
     const preference = async (patch: Partial<Preferences>) => {
         const before = prefs;
         setPrefs({ ...prefs, ...patch });
+        if (patch.theme) updateAppearance(patch.theme);
         try {
             await api('/preferences', 'PUT', patch);
         } catch (e) {
             setPrefs(before);
+            if (patch.theme) updateAppearance(before.theme);
             setToast({ message: (e as Error).message, error: true });
         }
     };
@@ -215,7 +215,11 @@ export default function MailPage(props: MailProps) {
             });
             setSelected([]);
             setMore(false);
-            if (thread && ['archive', 'trash', 'spam'].includes(action)) back();
+            if (
+                thread &&
+                ['archive', 'trash', 'spam', 'unread'].includes(action)
+            )
+                back();
             else router.reload({ only: ['messages', 'thread', 'counts'] });
         } catch (e) {
             setToast({ message: (e as Error).message, error: true });
@@ -247,7 +251,13 @@ export default function MailPage(props: MailProps) {
     };
     const search = () => {
         setMobileSearch(false);
-        visit(listUrl({ q: query, page: 1 }));
+        visit(
+            listUrl({
+                q: query,
+                folder: query.trim() ? 'all' : 'inbox',
+                page: 1,
+            }),
+        );
     };
     const navigation = (
         <>
@@ -358,6 +368,17 @@ export default function MailPage(props: MailProps) {
         </>
     );
     const actions = thread ? thread.messages.map((m) => m.id) : selected;
+    const canPurge =
+        actions.length > 0 &&
+        (thread
+            ? thread.messages.every((message) => message.folder === 'trash')
+            : filters.folder === 'trash');
+    const confirmPurge = () => {
+        setPurgeIds([...actions]);
+        setPurgeConfirmation('');
+        setPurgeError('');
+        setMore(false);
+    };
     const list = (
         <div className="message-list" ref={scroll} {...{ 'scroll-region': '' }}>
             <div className="list-title">
@@ -476,6 +497,39 @@ export default function MailPage(props: MailProps) {
     );
     const reader = thread && (
         <article className="conversation" {...{ 'scroll-region': '' }}>
+            {thread.pagination.total > 30 && (
+                <nav
+                    className="thread-pagination"
+                    aria-label="Conversation pages"
+                >
+                    <button
+                        className="secondary"
+                        disabled={!thread.pagination.older}
+                        onClick={() =>
+                            thread.pagination.older &&
+                            visit(thread.pagination.older)
+                        }
+                    >
+                        <ChevronLeft size={18} />
+                        Older messages
+                    </button>
+                    <span>
+                        {thread.messages.length} of {thread.pagination.total}{' '}
+                        messages. Actions affect this page.
+                    </span>
+                    <button
+                        className="secondary"
+                        disabled={!thread.pagination.newer}
+                        onClick={() =>
+                            thread.pagination.newer &&
+                            visit(thread.pagination.newer)
+                        }
+                    >
+                        Newer messages
+                        <ChevronRight size={18} />
+                    </button>
+                </nav>
+            )}
             <div className="conversation-subject">
                 <h1>{thread.subject || '(No subject)'}</h1>
                 <span className="folder-badge">
@@ -650,7 +704,7 @@ export default function MailPage(props: MailProps) {
                     <Link
                         href="/mail"
                         className="brand-link"
-                        aria-label="Postroom inbox"
+                        aria-label="WebMail by Hookstack inbox"
                     >
                         <Brand />
                     </Link>
@@ -739,13 +793,33 @@ export default function MailPage(props: MailProps) {
                 </div>
             </header>
             <aside className="mail-sidebar">{navigation}</aside>
-            <main id="mail-main" className="mail-surface">
-                <div className="mail-toolbar">
+            <main id="mail-main" className="mail-surface" tabIndex={-1}>
+                <div
+                    className={`mail-toolbar ${selected.length && !thread ? 'selection-active' : ''}`}
+                >
                     {thread ? (
                         <IconButton
                             icon={ArrowLeft}
                             label="Back to messages"
                             onClick={back}
+                        />
+                    ) : selected.length > 0 ? (
+                        <IconButton
+                            icon={X}
+                            label="Clear selection"
+                            onClick={() => {
+                                const firstSelected = selected[0];
+                                setSelected([]);
+                                requestAnimationFrame(() => {
+                                    (
+                                        document.getElementById(
+                                            `open-${firstSelected}`,
+                                        ) ??
+                                        document.getElementById('mail-main')
+                                    )?.focus({ preventScroll: true });
+                                });
+                            }}
+                            disabled={busy}
                         />
                     ) : (
                         <label className="select-all">
@@ -773,13 +847,20 @@ export default function MailPage(props: MailProps) {
                     {actions.length > 0 ? (
                         <>
                             <span className="selection-scope">
-                                {!thread && `${selected.length} on this page`}
+                                {!thread && (
+                                    <>
+                                        <span>{selected.length} selected</span>
+                                        <small>on this page</small>
+                                    </>
+                                )}
                             </span>
                             <IconButton
                                 icon={Archive}
                                 label={
                                     thread
-                                        ? 'Archive conversation'
+                                        ? thread.pagination.total > 30
+                                            ? 'Archive visible messages'
+                                            : 'Archive conversation'
                                         : 'Archive selected'
                                 }
                                 onClick={() => void mutate('archive', actions)}
@@ -788,11 +869,19 @@ export default function MailPage(props: MailProps) {
                             <IconButton
                                 icon={Trash2}
                                 label={
-                                    thread
-                                        ? 'Trash conversation'
-                                        : 'Trash selected'
+                                    canPurge
+                                        ? 'Delete selected permanently'
+                                        : thread
+                                          ? thread.pagination.total > 30
+                                              ? 'Trash visible messages'
+                                              : 'Trash conversation'
+                                          : 'Trash selected'
                                 }
-                                onClick={() => void mutate('trash', actions)}
+                                onClick={() =>
+                                    canPurge
+                                        ? confirmPurge()
+                                        : void mutate('trash', actions)
+                                }
                                 disabled={busy}
                             />
                             <span className="toolbar-divider" />
@@ -936,7 +1025,7 @@ export default function MailPage(props: MailProps) {
             <Sheet
                 open={drawer}
                 onClose={() => setDrawer(false)}
-                title="Postroom"
+                title="WebMail"
                 side="left"
             >
                 <div className="drawer-navigation">
@@ -1116,7 +1205,7 @@ export default function MailPage(props: MailProps) {
                     </Link>
                 ))}
                 <div className="account-links">
-                    <Link href="/settings/security">
+                    <Link href="/settings/security" onClick={rememberMail}>
                         Password & two-factor authentication
                     </Link>
                     {['owner', 'admin'].includes(String(user.role)) && (
@@ -1156,9 +1245,37 @@ export default function MailPage(props: MailProps) {
                 side="bottom"
             >
                 <p>
-                    Search sender names, email addresses, and subjects in the
-                    current folder.
+                    Search sender names, recipients, and subjects in this
+                    mailbox. New searches include all mail except Spam and
+                    Trash.
                 </p>
+                <div className="search-scope-field">
+                    <label htmlFor="search-scope">Search scope</label>
+                    <select
+                        id="search-scope"
+                        value={filters.folder}
+                        onChange={(event) => {
+                            visit(
+                                listUrl({
+                                    folder: event.target.value,
+                                    page: 1,
+                                }),
+                            );
+                            setSearchOptions(false);
+                        }}
+                    >
+                        <option value="all">
+                            All mail except Spam and Trash
+                        </option>
+                        {folders
+                            .filter(([key]) => key !== 'drafts')
+                            .map(([key, name]) => (
+                                <option key={key} value={key}>
+                                    {name}
+                                </option>
+                            ))}
+                    </select>
+                </div>
                 <label className="radio-row">
                     <input
                         type="checkbox"
@@ -1196,12 +1313,12 @@ export default function MailPage(props: MailProps) {
                     }}
                 >
                     <label>
-                        Sender or subject
+                        Sender, recipient or subject
                         <input
                             autoFocus
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Search this folder"
+                            placeholder="Search this mailbox"
                         />
                     </label>
                     <button className="primary" type="submit">
@@ -1220,6 +1337,12 @@ export default function MailPage(props: MailProps) {
                 side="bottom"
             >
                 <div className="action-menu">
+                    {thread && thread.pagination.total > 30 && (
+                        <p className="field-help">
+                            Actions affect only the {thread.messages.length}{' '}
+                            messages on this conversation page.
+                        </p>
+                    )}
                     <button onClick={() => void mutate('read', actions)}>
                         <MailOpen size={19} />
                         Mark read
@@ -1236,6 +1359,12 @@ export default function MailPage(props: MailProps) {
                         <TriangleAlert size={19} />
                         Move to Spam
                     </button>
+                    {canPurge && (
+                        <button className="error-text" onClick={confirmPurge}>
+                            <Trash2 size={19} />
+                            Delete permanently
+                        </button>
+                    )}
                     <label>
                         Label
                         <input
@@ -1255,30 +1384,128 @@ export default function MailPage(props: MailProps) {
                 </div>
             </Sheet>
             <Sheet
+                open={purgeIds.length > 0}
+                onClose={() => {
+                    if (!busy) setPurgeIds([]);
+                }}
+                title="Permanently delete these messages?"
+                side="bottom"
+            >
+                <p>
+                    The {purgeIds.length} selected Trash{' '}
+                    {purgeIds.length === 1 ? 'message' : 'messages'}, including
+                    original content and attachments, will be deleted. This
+                    cannot be undone. Other mail and drafts are retained.
+                </p>
+                <form
+                    className="admin-form"
+                    onSubmit={async (event) => {
+                        event.preventDefault();
+                        if (!mailbox || busy || purgeConfirmation !== 'DELETE')
+                            return;
+                        setBusy(true);
+                        setPurgeError('');
+                        try {
+                            const result = await api<{ deleted: number }>(
+                                `${base}/trash`,
+                                'DELETE',
+                                {
+                                    ids: purgeIds,
+                                    confirmation: purgeConfirmation,
+                                },
+                            );
+                            setPurgeIds([]);
+                            setSelected([]);
+                            setToast({
+                                message: `${result.deleted} ${result.deleted === 1 ? 'message' : 'messages'} permanently deleted.`,
+                            });
+                            visit(listUrl());
+                        } catch (cause) {
+                            setPurgeError(
+                                `Deletion not confirmed. Refresh Trash before trying again. ${(cause as Error).message}`,
+                            );
+                        } finally {
+                            setBusy(false);
+                        }
+                    }}
+                >
+                    <label>
+                        Type DELETE to confirm
+                        <input
+                            value={purgeConfirmation}
+                            onChange={(event) =>
+                                setPurgeConfirmation(event.target.value)
+                            }
+                            autoComplete="off"
+                            spellCheck={false}
+                            required
+                            disabled={busy}
+                        />
+                    </label>
+                    {purgeError && (
+                        <p role="alert" className="error-text">
+                            {purgeError}
+                        </p>
+                    )}
+                    <div className="button-row">
+                        <button
+                            type="button"
+                            className="secondary"
+                            onClick={() => setPurgeIds([])}
+                            disabled={busy}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            className="danger-button"
+                            disabled={busy || purgeConfirmation !== 'DELETE'}
+                        >
+                            {busy ? 'Deleting…' : 'Delete permanently'}
+                        </button>
+                    </div>
+                </form>
+            </Sheet>
+            <Sheet
                 open={!!detail}
                 onClose={() => setDetail(null)}
                 title="Message details"
                 side="bottom"
             >
                 {detail && (
-                    <dl className="message-details">
-                        <dt>From</dt>
-                        <dd>
-                            {detail.from_name} &lt;{detail.from_email}&gt;
-                        </dd>
-                        <dt>To</dt>
-                        <dd>{detail.to.join(', ')}</dd>
-                        {detail.cc.length > 0 && (
-                            <>
-                                <dt>Cc</dt>
-                                <dd>{detail.cc.join(', ')}</dd>
-                            </>
-                        )}
-                        <dt>Date</dt>
-                        <dd>{new Date(detail.created_at).toLocaleString()}</dd>
-                        <dt>Subject</dt>
-                        <dd>{detail.subject || '(No subject)'}</dd>
-                    </dl>
+                    <>
+                        <dl className="message-details">
+                            <dt>From</dt>
+                            <dd>
+                                {detail.from_name} &lt;{detail.from_email}&gt;
+                            </dd>
+                            <dt>To</dt>
+                            <dd>{detail.to.join(', ')}</dd>
+                            {detail.cc.length > 0 && (
+                                <>
+                                    <dt>Cc</dt>
+                                    <dd>{detail.cc.join(', ')}</dd>
+                                </>
+                            )}
+                            <dt>Date</dt>
+                            <dd>
+                                {new Date(detail.created_at).toLocaleString()}
+                            </dd>
+                            <dt>Subject</dt>
+                            <dd>{detail.subject || '(No subject)'}</dd>
+                        </dl>
+                        <a
+                            className="secondary"
+                            href={`/messages/${detail.id}/original`}
+                            download
+                        >
+                            <Download size={18} />
+                            Download original (.eml)
+                        </a>
+                        <p className="field-help">
+                            Contains the original message, including any
+                            attachments. Only open files you trust.
+                        </p>
+                    </>
                 )}
             </Sheet>
             <Sheet
@@ -1287,7 +1514,7 @@ export default function MailPage(props: MailProps) {
                 title="A quieter place for your mail"
             >
                 <p>
-                    Postroom is a private, limited free-tier pilot. Your
+                    WebMail is a private, limited free-tier pilot. Your
                     administrator creates your account and manages providers.
                 </p>
                 <h3>Install on your device</h3>

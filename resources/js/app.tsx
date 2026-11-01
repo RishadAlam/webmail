@@ -6,8 +6,9 @@ import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import MailLayout from '@/layouts/mail-layout';
+import { PRODUCT_TITLE } from '@/lib/brand';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Postroom';
+const appName = PRODUCT_TITLE;
 
 void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
@@ -18,10 +19,12 @@ void createInertiaApp({
                 return null;
             case name === 'mail' || name === 'admin':
                 return MailLayout;
+            case name === 'auth/confirm-password':
+                return [MailLayout, AuthLayout];
             case name.startsWith('auth'):
                 return AuthLayout;
             case name.startsWith('settings/'):
-                return [AppLayout, SettingsLayout];
+                return [MailLayout, AppLayout, SettingsLayout];
             default:
                 return AppLayout;
         }
@@ -88,7 +91,7 @@ window.addEventListener('pageshow', async (event) => {
         const notice = document.createElement('div');
         notice.id = 'privacy-notice';
         notice.textContent =
-            'Postroom is locked until your session can be checked. Reconnect, then reload.';
+            'WebMail is locked until your session can be checked. Reconnect, then reload.';
         document.documentElement.append(notice);
     }
 });

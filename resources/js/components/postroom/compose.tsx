@@ -43,15 +43,16 @@ function RecipientInput({
     onChange,
     disabled,
     onPending,
+    pending,
 }: {
     label: string;
     values: string[];
     onChange: (value: string[]) => void;
     disabled: boolean;
     onPending: (value: string) => void;
+    pending: string;
 }) {
-    const [pending, setPending] = useState(''),
-        [error, setError] = useState('');
+    const [error, setError] = useState('');
     const commit = () => {
         const addresses = pending.split(/[,;\s]+/).filter(Boolean);
         if (!addresses.length) return;
@@ -60,7 +61,6 @@ function RecipientInput({
             return;
         }
         onChange([...new Set([...values, ...addresses])]);
-        setPending('');
         onPending('');
         setError('');
     };
@@ -91,7 +91,6 @@ function RecipientInput({
                     autoComplete="off"
                     disabled={disabled}
                     onChange={(e) => {
-                        setPending(e.target.value);
                         onPending(e.target.value);
                         setError('');
                     }}
@@ -123,7 +122,11 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
     const userId = (page.props.auth as { user: { id: number } | null })?.user
         ?.id;
     const [draft, setDraft] = useState<Draft | null>(null),
-        [status, setStatus] = useState('Saved to Postroom'),
+        [senderIdentities, setSenderIdentities] = useState<string[]>([]),
+        [recipientInputs, setRecipientInputs] = useState<
+            Record<string, string>
+        >({}),
+        [status, setStatus] = useState('Saved to WebMail'),
         [error, setError] = useState(''),
         [minimized, setMinimized] = useState(false),
         [expanded, setExpanded] = useState(false),
@@ -158,6 +161,7 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
         (fields(current.current) !== saved.current ||
             Object.values(pendingRecipients.current).some(Boolean));
     const save = useCallback(async (): Promise<boolean> => {
+        while (saving.current) await saving.current;
         if (Object.values(pendingRecipients.current).some(Boolean)) {
             if (pendingRecipients.current.Cc) setCc(true);
             if (pendingRecipients.current.Bcc) setBcc(true);
@@ -166,12 +170,15 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
             );
             return false;
         }
-        if (saving.current) {
-            await saving.current;
-            if (!dirty()) return true;
-        }
         const data = current.current;
-        if (!data || !dirty()) return true;
+        if (!data) return true;
+        if (!dirty()) {
+            if (['draft', 'held'].includes(data.status)) {
+                setStatus('Saved to WebMail');
+                setError('');
+            }
+            return true;
+        }
         if (!['draft', 'held'].includes(data.status)) return false;
         if (timer.current) clearTimeout(timer.current);
         setStatus('Saving…');
@@ -192,11 +199,7 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
                             : { ...current.current, version: result.version };
                     current.current = next;
                     setDraft(next);
-                    setStatus(
-                        captured === revision.current
-                            ? 'Saved to Postroom'
-                            : 'Not saved yet',
-                    );
+                    setStatus(!dirty() ? 'Saved to WebMail' : 'Not saved yet');
                 }
                 return true;
             } catch (e) {
@@ -226,6 +229,14 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
         if (timer.current) clearTimeout(timer.current);
         timer.current = setTimeout(() => void save(), 650);
     };
+    const updatePending = (field: string, value: string) => {
+        pendingRecipients.current[field] = value;
+        setRecipientInputs({ ...pendingRecipients.current });
+        if (value) setStatus('Not saved yet');
+        if (timer.current) clearTimeout(timer.current);
+        if (!Object.values(pendingRecipients.current).some(Boolean))
+            timer.current = setTimeout(() => void save(), 650);
+    };
     const resume = (value: Draft) => {
         if (current.current?.id === value.id) {
             setMinimized(false);
@@ -242,11 +253,17 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
                 ? document.activeElement
                 : null;
         pendingRecipients.current = {};
+        setRecipientInputs({});
         current.current = value;
         saved.current = fields(value);
         revision.current = 0;
         setDraft(value);
-        setStatus('Saved to Postroom');
+        setSenderIdentities(
+            props.mailbox?.id === value.mailbox_id
+                ? props.identities
+                : [value.from_email],
+        );
+        setStatus('Saved to WebMail');
         setError('');
         setMinimized(false);
         setCc(value.cc.length > 0);
@@ -360,7 +377,10 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
         document.documentElement.dataset.userId = String(userId ?? '');
         current.current = null;
         setDraft(null);
+        setSenderIdentities([]);
         saved.current = '';
+        pendingRecipients.current = {};
+        setRecipientInputs({});
         setError('');
     }, [userId]);
     useEffect(() => {
@@ -567,7 +587,7 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
                                                 <option>
                                                     {draft.from_email}
                                                 </option>
-                                                {(props.identities ?? [])
+                                                {senderIdentities
                                                     .filter(
                                                         (v) =>
                                                             v !==
@@ -594,40 +614,44 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
                                         </div>
                                         <RecipientInput
                                             label="To"
+                                            pending={recipientInputs.To ?? ''}
                                             values={draft.to}
                                             onChange={(to) => change({ to })}
                                             disabled={!!locked}
-                                            onPending={(value) => {
-                                                pendingRecipients.current.To =
-                                                    value;
-                                            }}
+                                            onPending={(value) =>
+                                                updatePending('To', value)
+                                            }
                                         />
                                         <div hidden={!cc}>
                                             <RecipientInput
                                                 label="Cc"
+                                                pending={
+                                                    recipientInputs.Cc ?? ''
+                                                }
                                                 values={draft.cc}
                                                 onChange={(cc) =>
                                                     change({ cc })
                                                 }
                                                 disabled={!!locked}
-                                                onPending={(value) => {
-                                                    pendingRecipients.current.Cc =
-                                                        value;
-                                                }}
+                                                onPending={(value) =>
+                                                    updatePending('Cc', value)
+                                                }
                                             />
                                         </div>{' '}
                                         <div hidden={!bcc}>
                                             <RecipientInput
                                                 label="Bcc"
+                                                pending={
+                                                    recipientInputs.Bcc ?? ''
+                                                }
                                                 values={draft.bcc}
                                                 onChange={(bcc) =>
                                                     change({ bcc })
                                                 }
                                                 disabled={!!locked}
-                                                onPending={(value) => {
-                                                    pendingRecipients.current.Bcc =
-                                                        value;
-                                                }}
+                                                onPending={(value) =>
+                                                    updatePending('Bcc', value)
+                                                }
                                             />
                                         </div>
                                         <label className="subject-line">
@@ -669,7 +693,7 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
                                             }
                                             role="status"
                                         >
-                                            {status === 'Saved to Postroom' && (
+                                            {status === 'Saved to WebMail' && (
                                                 <Check size={14} />
                                             )}{' '}
                                             {status}

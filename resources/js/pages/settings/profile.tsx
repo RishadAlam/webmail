@@ -1,7 +1,6 @@
 import { Form, Head, usePage } from '@inertiajs/react';
 
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
-import DeleteUser from '@/components/delete-user';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -27,7 +26,7 @@ export default function Profile() {
                 <Heading
                     variant="small"
                     title="Profile"
-                    description="Update your name and email address"
+                    description="Choose the name people see. Your administrator manages your email address."
                 />
 
                 <Form
@@ -47,6 +46,7 @@ export default function Profile() {
                                     className="mt-1 block w-full"
                                     defaultValue={auth.user.name}
                                     name="name"
+                                    maxLength={80}
                                     required
                                     autoComplete="name"
                                     placeholder="Full name"
@@ -66,19 +66,24 @@ export default function Profile() {
                                     type="email"
                                     className="mt-1 block w-full"
                                     defaultValue={auth.user.email}
-                                    name="email"
-                                    required
+                                    readOnly
+                                    aria-describedby="managed-address-help"
                                     autoComplete="username"
                                     placeholder="Email address"
                                 />
+                                <p
+                                    id="managed-address-help"
+                                    className="field-help"
+                                >
+                                    This address is assigned by your
+                                    administrator.
+                                </p>
 
                                 <InputError
                                     className="mt-2"
                                     message={errors.email}
                                 />
                             </div>
-
-                            {}
 
                             <div className="flex items-center gap-4">
                                 <Button
@@ -93,7 +98,13 @@ export default function Profile() {
                 </Form>
             </div>
 
-            <DeleteUser />
+            <section className="managed-account-note">
+                <h2>Managed account</h2>
+                <p>
+                    Contact your administrator to change access or close this
+                    account. Your mail stays protected during account changes.
+                </p>
+            </section>
         </>
     );
 }

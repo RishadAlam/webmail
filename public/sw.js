@@ -1,5 +1,5 @@
 /* Public assets only. Never store requests by URL pattern or navigation response. */
-const CACHE = 'postroom-public-v1';
+const CACHE = 'webmail-public-v2';
 const PUBLIC = [
     '/offline.html',
     '/favicon.svg',
@@ -18,7 +18,8 @@ self.addEventListener('activate', (event) => {
                     keys
                         .filter(
                             (key) =>
-                                key.startsWith('postroom-public-') &&
+                                (key.startsWith('webmail-public-') ||
+                                    key.startsWith('postroom-public-')) &&
                                 key !== CACHE,
                         )
                         .map((key) => caches.delete(key)),

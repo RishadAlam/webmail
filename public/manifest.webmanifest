@@ -1,8 +1,8 @@
 {
     "id": "/",
-    "name": "Postroom",
-    "short_name": "Postroom",
-    "description": "Your private mail workspace",
+    "name": "WebMail by Hookstack",
+    "short_name": "WebMail",
+    "description": "Private email, created by Hookstack",
     "start_url": "/mail",
     "scope": "/",
     "display": "standalone",

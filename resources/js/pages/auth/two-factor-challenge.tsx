@@ -1,14 +1,8 @@
-import { Form, Head, setLayoutProps } from '@inertiajs/react';
-import { REGEXP_ONLY_DIGITS } from 'input-otp';
+import { Form, Head, Link, setLayoutProps } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-    InputOTP,
-    InputOTPGroup,
-    InputOTPSlot,
-} from '@/components/ui/input-otp';
 import { OTP_MAX_LENGTH } from '@/hooks/use-two-factor-auth';
 import { store } from '@/routes/two-factor/login';
 
@@ -25,7 +19,7 @@ export default function TwoFactorChallenge() {
             return {
                 title: 'Recovery code',
                 description:
-                    'Please confirm access to your account by entering one of your emergency recovery codes.',
+                    'Enter one of the recovery codes you saved when setting up two-factor authentication. Each code works once.',
                 toggleText: 'login using an authentication code',
             };
         }
@@ -33,7 +27,7 @@ export default function TwoFactorChallenge() {
         return {
             title: 'Authentication code',
             description:
-                'Enter the authentication code provided by your authenticator application.',
+                'Enter the six-digit code from your authenticator app to finish signing in.',
             toggleText: 'login using a recovery code',
         };
     }, [showRecoveryInput]);
@@ -64,49 +58,74 @@ export default function TwoFactorChallenge() {
                         <>
                             {showRecoveryInput ? (
                                 <>
+                                    <label htmlFor="recovery-code">
+                                        Recovery code
+                                    </label>
                                     <Input
+                                        id="recovery-code"
                                         name="recovery_code"
                                         type="text"
                                         placeholder="Enter recovery code"
                                         autoFocus={showRecoveryInput}
+                                        autoComplete="off"
+                                        spellCheck={false}
+                                        aria-invalid={!!errors.recovery_code}
+                                        aria-describedby={
+                                            errors.recovery_code
+                                                ? 'recovery-error'
+                                                : undefined
+                                        }
                                         required
                                     />
                                     <InputError
+                                        id="recovery-error"
                                         message={errors.recovery_code}
                                     />
                                 </>
                             ) : (
-                                <div className="flex flex-col items-center justify-center space-y-3 text-center">
-                                    <div className="flex w-full items-center justify-center">
-                                        <InputOTP
-                                            name="code"
-                                            maxLength={OTP_MAX_LENGTH}
-                                            value={code}
-                                            onChange={(value) => setCode(value)}
-                                            disabled={processing}
-                                            pattern={REGEXP_ONLY_DIGITS}
-                                            autoFocus
-                                        >
-                                            <InputOTPGroup>
-                                                {Array.from(
-                                                    { length: OTP_MAX_LENGTH },
-                                                    (_, index) => (
-                                                        <InputOTPSlot
-                                                            key={index}
-                                                            index={index}
-                                                        />
-                                                    ),
-                                                )}
-                                            </InputOTPGroup>
-                                        </InputOTP>
-                                    </div>
-                                    <InputError message={errors.code} />
+                                <div className="auth-code-field">
+                                    <label htmlFor="authentication-code">
+                                        Six-digit code
+                                    </label>
+                                    <input
+                                        id="authentication-code"
+                                        name="code"
+                                        type="text"
+                                        inputMode="numeric"
+                                        autoComplete="one-time-code"
+                                        className="authentication-code"
+                                        minLength={OTP_MAX_LENGTH}
+                                        maxLength={OTP_MAX_LENGTH}
+                                        value={code}
+                                        onChange={(event) =>
+                                            setCode(
+                                                event.target.value.replace(
+                                                    /\D/g,
+                                                    '',
+                                                ),
+                                            )
+                                        }
+                                        disabled={processing}
+                                        pattern="[0-9]{6}"
+                                        aria-invalid={!!errors.code}
+                                        aria-describedby={
+                                            errors.code
+                                                ? 'code-error'
+                                                : undefined
+                                        }
+                                        required
+                                        autoFocus
+                                    />
+                                    <InputError
+                                        id="code-error"
+                                        message={errors.code}
+                                    />
                                 </div>
                             )}
 
                             <Button
                                 type="submit"
-                                className="w-full"
+                                className="auth-submit w-full"
                                 disabled={processing}
                             >
                                 Continue
@@ -116,7 +135,7 @@ export default function TwoFactorChallenge() {
                                 <span>or you can </span>
                                 <button
                                     type="button"
-                                    className="cursor-pointer text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
+                                    className="auth-switch"
                                     onClick={() =>
                                         toggleRecoveryMode(clearErrors)
                                     }
@@ -124,6 +143,12 @@ export default function TwoFactorChallenge() {
                                     {authConfigContent.toggleText}
                                 </button>
                             </div>
+                            <Link
+                                href="/login"
+                                className="auth-switch auth-back"
+                            >
+                                Use another account
+                            </Link>
                         </>
                     )}
                 </Form>

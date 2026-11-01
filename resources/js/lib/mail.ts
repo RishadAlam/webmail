@@ -49,7 +49,16 @@ export type MailProps = {
     mailbox: Mailbox | null;
     mailboxes: Mailbox[];
     messages: Message[];
-    thread: { id: string; subject: string; messages: Message[] } | null;
+    thread: {
+        id: string;
+        subject: string;
+        messages: Message[];
+        pagination: {
+            total: number;
+            older: string | null;
+            newer: string | null;
+        };
+    } | null;
     drafts: Draft[];
     identities: string[];
     counts: Record<string, number>;

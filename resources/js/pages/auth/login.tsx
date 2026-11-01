@@ -29,7 +29,7 @@ export default function Login({
             <section className="login-form">
                 <ShieldCheck className="login-symbol" size={30} />
                 <h1>Your mail. Your space.</h1>
-                <p>Sign in to your private Postroom workspace.</p>
+                <p>Sign in to your private WebMail workspace.</p>
                 <Form
                     action="/login"
                     method="post"
@@ -79,7 +79,7 @@ export default function Login({
                     Contact them if you need access or a password reset.
                 </p>
             </section>
-            <footer>Private by design. Thoughtful by default.</footer>
+            <footer>WebMail, created by Hookstack.</footer>
         </main>
     );
 }

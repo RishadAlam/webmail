@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import {
     ArrowLeft,
@@ -6,14 +6,24 @@ import {
     Gauge,
     Globe2,
     Mail,
+    Menu,
     Plus,
     ShieldCheck,
     Users,
     X,
 } from 'lucide-react';
 import { Brand, IconButton, Sheet } from '@/components/postroom/ui';
-import { api, byteText, initials, type Mailbox } from '@/lib/mail';
+import { api, initials } from '@/lib/mail';
 import { useMailNavigation } from '@/lib/mail-navigation';
+import {
+    MailboxAdministration,
+    PersonAccess,
+    ProviderConnections,
+    type AdminAddress,
+    type AdminLimits,
+    type AdminMailbox,
+    type DirectoryState,
+} from '@/components/postroom/admin-controls';
 type Meter = {
     provider: string;
     resource: string;
@@ -38,13 +48,10 @@ type Person = {
 };
 type Props = {
     people: Person[];
-    mailboxes: Mailbox[];
-    addresses: {
-        id: number;
-        email: string;
-        directory_status: string;
-        active: boolean;
-    }[];
+    mailboxes: AdminMailbox[];
+    addresses: AdminAddress[];
+    limits: AdminLimits;
+    directory: DirectoryState;
     meters: Meter[];
     deliveries: {
         id: string;
@@ -64,8 +71,38 @@ type Props = {
 };
 export default function Admin(props: Props) {
     const navigation = useMailNavigation();
-    const [section, setSection] = useState('Overview'),
-        [create, setCreate] = useState(false),
+    const page = usePage();
+    const actor = page.props.auth.user;
+    const requestedSection = page.url.startsWith('/admin/connection-settings')
+        ? 'Connections'
+        : new URL(page.url, location.origin).searchParams.get('section');
+    const section = [
+        'Overview',
+        'People',
+        'Mailboxes',
+        'Connections',
+        'Delivery',
+        'Usage',
+        'Security',
+    ].includes(requestedSection ?? '')
+        ? requestedSection!
+        : 'Overview';
+    const [navigationOpen, setNavigationOpen] = useState(false);
+    const setSection = (name: string) => {
+        setNavigationOpen(false);
+        if (name === 'Connections')
+            router.get(
+                '/admin/connection-settings',
+                {},
+                { preserveState: true },
+            );
+        else
+            router.push({
+                url: `/admin?section=${encodeURIComponent(name)}`,
+                preserveState: true,
+            });
+    };
+    const [create, setCreate] = useState(false),
         [name, setName] = useState(''),
         [address, setAddress] = useState(''),
         [password, setPassword] = useState(''),
@@ -81,6 +118,17 @@ export default function Admin(props: Props) {
         ['Usage', Gauge],
         ['Security', ShieldCheck],
     ] as const;
+    const sectionNavigation = sections.map(([name, Icon]) => (
+        <button
+            key={name}
+            aria-current={section === name ? 'page' : undefined}
+            className={`nav-item ${section === name ? 'active' : ''}`}
+            onClick={() => setSection(name)}
+        >
+            <Icon size={19} />
+            {name}
+        </button>
+    ));
     const createPerson = async () => {
         setBusy(true);
         setMessage('');
@@ -121,24 +169,22 @@ export default function Admin(props: Props) {
                     <span>Back to mail</span>
                 </Link>
             </header>
+            <button
+                className="admin-menu-toggle"
+                aria-label={`${section} Change section`}
+                onClick={() => setNavigationOpen(true)}
+            >
+                <Menu size={20} />
+                {section} <span>Change section</span>
+            </button>
             <div className="admin-grid">
                 <nav className="admin-nav" aria-label="Administration sections">
-                    {sections.map(([name, Icon]) => (
-                        <button
-                            key={name}
-                            aria-current={section === name ? 'page' : undefined}
-                            className={`nav-item ${section === name ? 'active' : ''}`}
-                            onClick={() => setSection(name)}
-                        >
-                            <Icon size={19} />
-                            {name}
-                        </button>
-                    ))}
+                    {sectionNavigation}
                 </nav>
-                <main className="admin-main">
+                <main className="admin-main" tabIndex={-1}>
                     <div className="admin-title">
                         <div>
-                            <p className="admin-context">Postroom workspace</p>
+                            <p className="admin-context">WebMail workspace</p>
                             <h1>{section}</h1>
                         </div>
                         {section === 'People' && (
@@ -183,7 +229,7 @@ export default function Admin(props: Props) {
                                     <strong>Incoming mail</strong>
                                     <p>
                                         Cloudflare Email Routing → durable D1
-                                        spool → Postroom
+                                        spool → WebMail
                                     </p>
                                 </div>
                                 <span className="status-pill warning">
@@ -209,8 +255,9 @@ export default function Admin(props: Props) {
                                 <div>
                                     <strong>People & mailboxes</strong>
                                     <p>
-                                        {props.people.length} of 5 pilot
-                                        accounts · managed here in Postroom
+                                        {props.people.length} of{' '}
+                                        {props.limits.max_users} pilot accounts
+                                        · managed here in WebMail
                                     </p>
                                 </div>
                                 <button
@@ -237,7 +284,7 @@ export default function Admin(props: Props) {
                                 </button>
                             </div>
                             <p className="field-help">
-                                This is a local Phase 0 pilot. Provider signup,
+                                This is a strict-free pilot. Provider signup,
                                 initial deployment, master key and database
                                 connection remain owner bootstrap steps.
                             </p>
@@ -262,6 +309,10 @@ export default function Admin(props: Props) {
                                         <span className="person-role">
                                             {person.role}
                                         </span>
+                                        {person.role === 'member' &&
+                                            person.id !== actor.id && (
+                                                <PersonAccess person={person} />
+                                            )}
                                         <span
                                             className={`status-pill ${!person.active ? 'warning' : ''}`}
                                         >
@@ -269,18 +320,20 @@ export default function Admin(props: Props) {
                                                 ? 'Active'
                                                 : 'Suspended'}
                                         </span>
-                                        {person.role !== 'owner' && (
-                                            <button
-                                                className="text-button"
-                                                onClick={() =>
-                                                    setSuspend(person)
-                                                }
-                                            >
-                                                {person.active
-                                                    ? 'Suspend'
-                                                    : 'Reinstate'}
-                                            </button>
-                                        )}
+                                        {person.role === 'member' &&
+                                            person.id !== actor.id && (
+                                                <button
+                                                    className="text-button"
+                                                    onClick={() => {
+                                                        setMessage('');
+                                                        setSuspend(person);
+                                                    }}
+                                                >
+                                                    {person.active
+                                                        ? 'Suspend'
+                                                        : 'Reinstate'}
+                                                </button>
+                                            )}
                                     </div>
                                 ))}
                             </div>
@@ -293,45 +346,14 @@ export default function Admin(props: Props) {
                         </>
                     )}
                     {section === 'Mailboxes' && (
-                        <>
-                            <p className="section-intro">
-                                Account administration does not grant access to
-                                another person’s mail.
-                            </p>
-                            {props.mailboxes.map((box) => (
-                                <div className="mailbox-admin-row" key={box.id}>
-                                    <div>
-                                        <strong>{box.name}</strong>
-                                        <p>{box.email}</p>
-                                    </div>
-                                    <span>
-                                        {byteText(box.used_bytes)} /{' '}
-                                        {byteText(box.quota_bytes)}
-                                    </span>
-                                    <progress
-                                        value={box.used_bytes}
-                                        max={box.quota_bytes}
-                                        aria-label={`${box.name} storage`}
-                                    />
-                                </div>
-                            ))}
-                            <h2>Receiving addresses</h2>
-                            {props.addresses.map((address) => (
-                                <div className="readiness-row" key={address.id}>
-                                    <span className="break-anywhere">
-                                        {address.email}
-                                    </span>
-                                    <span className="status-pill">
-                                        {address.directory_status ===
-                                        'local_only'
-                                            ? 'Local only'
-                                            : address.active
-                                              ? 'Sync pending'
-                                              : 'Suspension sync pending'}
-                                    </span>
-                                </div>
-                            ))}
-                        </>
+                        <MailboxAdministration
+                            boxes={props.mailboxes}
+                            people={props.people}
+                            addresses={props.addresses}
+                            limits={props.limits}
+                            directory={props.directory}
+                            actor={actor.id}
+                        />
                     )}
                     {section === 'Usage' && (
                         <>
@@ -348,7 +370,7 @@ export default function Admin(props: Props) {
                                 ))}
                             </div>
                             <p className="field-help">
-                                Postroom holds sending at 95% to protect
+                                WebMail holds sending at 95% to protect
                                 operational headroom. The local daily guard uses
                                 a rolling 24 hours; live reset times must come
                                 from the provider.
@@ -356,55 +378,7 @@ export default function Admin(props: Props) {
                         </>
                     )}
                     {section === 'Connections' && (
-                        <>
-                            <p className="section-intro">
-                                Provider connections are not verified in this
-                                local pilot.
-                            </p>
-                            <div className="status-banner">
-                                <Globe2 size={23} />
-                                <div>
-                                    <strong>Owner bootstrap comes first</strong>
-                                    <p>
-                                        Create or authorize your provider
-                                        accounts, deploy the PHP application and
-                                        supply the application key and database
-                                        connection. Ordinary users never perform
-                                        these steps.
-                                    </p>
-                                </div>
-                            </div>
-                            {[
-                                'Cloudflare Email Routing & D1',
-                                'Resend sending & usage',
-                                'Neon PostgreSQL',
-                                'Render Free web service',
-                            ].map((name) => (
-                                <div className="readiness-row" key={name}>
-                                    <div>
-                                        <strong>{name}</strong>
-                                        <p>
-                                            No live account evidence recorded.
-                                        </p>
-                                    </div>
-                                    <span className="status-pill warning">
-                                        Not verified
-                                    </span>
-                                </div>
-                            ))}
-                            <h2>DNS changes require review</h2>
-                            <p>
-                                No DNS or routing changes have been proposed or
-                                applied. A future provisioning run must show the
-                                exact diff and obtain approval before applying
-                                changes.
-                            </p>
-                            <p className="field-help">
-                                The resumable provider provisioning wizard is a
-                                later milestone. This screen does not pretend to
-                                connect or verify a provider.
-                            </p>
-                        </>
+                        <ProviderConnections owner={actor.role === 'owner'} />
                     )}
                     {section === 'Delivery' && (
                         <>
@@ -497,6 +471,19 @@ export default function Admin(props: Props) {
                 </main>
             </div>
             <Sheet
+                open={navigationOpen}
+                onClose={() => setNavigationOpen(false)}
+                title="Administration"
+                side="left"
+            >
+                <nav
+                    className="admin-drawer-nav"
+                    aria-label="Administration sections"
+                >
+                    {sectionNavigation}
+                </nav>
+            </Sheet>
+            <Sheet
                 open={create}
                 onClose={() => {
                     setCreate(false);
@@ -549,7 +536,7 @@ export default function Admin(props: Props) {
                         />
                         <small>
                             At least 12 characters. Share securely outside
-                            Postroom.
+                            WebMail.
                         </small>
                     </label>
                     {message && (
@@ -572,6 +559,11 @@ export default function Admin(props: Props) {
                 }
                 side="bottom"
             >
+                {message && (
+                    <p role="alert" className="error-text">
+                        {message}
+                    </p>
+                )}
                 <p>
                     {suspend?.name}:{' '}
                     {suspend?.active

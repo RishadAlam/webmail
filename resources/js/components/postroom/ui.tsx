@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, type LucideIcon, Mail } from 'lucide-react';
-import type { ReactNode, ButtonHTMLAttributes } from 'react';
+import { useRef, type ReactNode, type ButtonHTMLAttributes } from 'react';
+import { PRODUCT_NAME, PRODUCT_BYLINE, PRODUCT_TITLE } from '@/lib/brand';
 export function IconButton({
     icon: Icon,
     label,
@@ -23,11 +24,13 @@ export function IconButton({
 }
 export function Brand() {
     return (
-        <span className="brand">
-            <span className="brand-mark">
+        <span className="brand" role="img" aria-label={PRODUCT_TITLE}>
+            <span className="brand-mark" aria-hidden="true">
                 <Mail size={21} strokeWidth={1.7} />
             </span>
-            <span>Postroom</span>
+            <span className="brand-wordmark" aria-hidden="true">
+                <span>{PRODUCT_NAME}</span> <small>{PRODUCT_BYLINE}</small>
+            </span>
         </span>
     );
 }
@@ -44,6 +47,7 @@ export function Sheet({
     children: ReactNode;
     side?: 'right' | 'left' | 'bottom';
 }) {
+    const returnFocus = useRef<HTMLElement | null>(null);
     return (
         <Dialog.Root
             open={open}
@@ -56,6 +60,36 @@ export function Sheet({
                 <Dialog.Content
                     className={`sheet sheet-${side}`}
                     aria-describedby={undefined}
+                    onOpenAutoFocus={() => {
+                        returnFocus.current =
+                            document.activeElement instanceof HTMLElement
+                                ? document.activeElement
+                                : null;
+                    }}
+                    onCloseAutoFocus={(event) => {
+                        if (
+                            document.activeElement instanceof Element &&
+                            document.activeElement.closest(
+                                '.sheet[role="dialog"][data-state="open"]',
+                            )
+                        ) {
+                            event.preventDefault();
+                            return;
+                        }
+                        if (returnFocus.current?.isConnected) {
+                            event.preventDefault();
+                            returnFocus.current.focus({ preventScroll: true });
+                        } else {
+                            const fallback =
+                                document.querySelector<HTMLElement>(
+                                    'main[tabindex="-1"]',
+                                );
+                            if (fallback) {
+                                event.preventDefault();
+                                fallback.focus({ preventScroll: true });
+                            }
+                        }
+                    }}
                 >
                     <div className="sheet-heading">
                         <Dialog.Title>{title}</Dialog.Title>

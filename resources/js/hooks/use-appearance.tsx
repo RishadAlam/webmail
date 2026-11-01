@@ -34,7 +34,12 @@ const getStoredAppearance = (): Appearance => {
         return 'system';
     }
 
-    return (localStorage.getItem('appearance') as Appearance) || 'system';
+    try {
+        const saved = localStorage.getItem('appearance');
+        return saved === 'light' || saved === 'dark' ? saved : 'system';
+    } catch {
+        return 'system';
+    }
 };
 
 const isDarkMode = (appearance: Appearance): boolean => {
@@ -68,48 +73,45 @@ const mediaQuery = (): MediaQueryList | null => {
     return window.matchMedia('(prefers-color-scheme: dark)');
 };
 
-const handleSystemThemeChange = (): void => applyTheme(currentAppearance);
+const handleSystemThemeChange = (): void => {
+    applyTheme(currentAppearance);
+    notify();
+};
+
+export function updateAppearance(mode: Appearance): void {
+    currentAppearance = mode;
+    try {
+        localStorage.setItem('appearance', mode);
+        setCookie('appearance', mode);
+    } catch {
+        // Account preferences still persist on the server when browser storage is blocked.
+    }
+    applyTheme(mode);
+    notify();
+}
 
 export function initializeTheme(): void {
     if (typeof window === 'undefined') {
         return;
     }
 
-    if (!localStorage.getItem('appearance')) {
-        localStorage.setItem('appearance', 'system');
-        setCookie('appearance', 'system');
-    }
-
-    currentAppearance = getStoredAppearance();
-    applyTheme(currentAppearance);
+    updateAppearance(getStoredAppearance());
 
     // Set up system theme change listener
     mediaQuery()?.addEventListener('change', handleSystemThemeChange);
 }
 
 export function useAppearance(): UseAppearanceReturn {
-    const appearance: Appearance = useSyncExternalStore(
+    const snapshot = useSyncExternalStore(
         subscribe,
-        () => currentAppearance,
-        () => 'system',
+        () =>
+            `${currentAppearance}:${isDarkMode(currentAppearance) ? 'dark' : 'light'}`,
+        () => 'system:light',
     );
-
-    const resolvedAppearance: ResolvedAppearance = isDarkMode(appearance)
-        ? 'dark'
-        : 'light';
-
-    const updateAppearance = (mode: Appearance): void => {
-        currentAppearance = mode;
-
-        // Store in localStorage for client-side persistence...
-        localStorage.setItem('appearance', mode);
-
-        // Store in cookie for SSR...
-        setCookie('appearance', mode);
-
-        applyTheme(mode);
-        notify();
-    };
+    const [appearance, resolvedAppearance] = snapshot.split(':') as [
+        Appearance,
+        ResolvedAppearance,
+    ];
 
     return { appearance, resolvedAppearance, updateAppearance } as const;
 }

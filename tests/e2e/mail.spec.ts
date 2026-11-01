@@ -1,31 +1,9 @@
 import { existsSync } from 'node:fs';
-import { createHmac } from 'node:crypto';
+import { fixtureTotp } from './fixtures/totp';
 import { createServer, request } from 'node:http';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-
-let lastFixtureStep = 0;
-async function fixtureTotp() {
-    // Fortify correctly rejects replaying one TOTP across two login sessions.
-    if (Math.floor(Date.now() / 30000) === lastFixtureStep) {
-        await new Promise((resolve) =>
-            setTimeout(resolve, 30020 - (Date.now() % 30000)),
-        );
-    }
-    lastFixtureStep = Math.floor(Date.now() / 30000);
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-    let bits = '';
-    for (const ch of 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP')
-        bits += alphabet.indexOf(ch).toString(2).padStart(5, '0');
-    const key = Buffer.from(bits.match(/.{8}/g)!.map((b) => parseInt(b, 2)));
-    const tick = Buffer.alloc(8);
-    tick.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
-    const digest = createHmac('sha1', key).update(tick).digest();
-    return String(
-        (digest.readUInt32BE(digest[19] & 15) & 0x7fffffff) % 1000000,
-    ).padStart(6, '0');
-}
 
 test.beforeAll(async ({ browser }) => {
     if (existsSync('storage/test-auth.json')) return;
@@ -58,6 +36,12 @@ test.beforeEach(async ({ page }, info) => {
 test('read, search, back, archive and server-backed Undo', async ({ page }) => {
     await page.getByPlaceholder('Search mail').fill('collection');
     await page.getByPlaceholder('Search mail').press('Enter');
+    await page
+        .getByRole('button', { name: 'Search options', exact: true })
+        .click();
+    await page
+        .getByLabel('Search scope', { exact: true })
+        .selectOption('inbox');
     await expect(
         page.getByRole('heading', { name: 'Search results', exact: true }),
     ).toBeVisible();
@@ -101,7 +85,7 @@ test('one server draft survives resizing, minimization and closing', async ({
         .getByRole('textbox', { name: 'Message body' })
         .fill('A fictional draft to preserve.');
     await expect(
-        page.getByText('Saved to Postroom', { exact: true }),
+        page.getByText('Saved to WebMail', { exact: true }),
     ).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.getByLabel('Subject', { exact: true })).toHaveValue(
@@ -263,7 +247,7 @@ test('settings persist, optional pane collapses, and dirty compose survives mini
         page.getByRole('textbox', { name: 'Message body' }),
     ).toHaveCount(1);
     await expect(
-        page.getByText('Saved to Postroom', { exact: true }),
+        page.getByText('Saved to WebMail', { exact: true }),
     ).toBeVisible();
     await page.screenshot({
         path: `docs/ui-evidence/mobile/${test.info().project.name}-compose.png`,
@@ -477,6 +461,7 @@ test('mobile owner can create and suspend a local account, usage is honest', asy
     await page
         .getByRole('link', { name: 'Administration', exact: true })
         .click();
+    await page.getByRole('button', { name: /Change section/ }).click();
     await page.getByRole('button', { name: 'People', exact: true }).click();
     await page.getByRole('button', { name: 'Add person' }).click();
     await page.getByLabel('Full name').fill('Fictional Robin');
@@ -494,6 +479,7 @@ test('mobile owner can create and suspend a local account, usage is honest', asy
         .getByRole('button', { name: 'Suspend account', exact: true })
         .click();
     await expect(person.getByText('Suspended', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: /Change section/ }).click();
     await page.getByRole('button', { name: 'Usage', exact: true }).click();
     await expect(
         page.getByText('Unavailable', { exact: true }).first(),
