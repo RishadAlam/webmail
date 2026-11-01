@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
 use App\Http\Requests\Settings\TwoFactorAuthenticationRequest;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -61,11 +63,20 @@ class SecurityController extends Controller
      */
     public function update(PasswordUpdateRequest $request): RedirectResponse
     {
-        $request->user()->update([
-            'password' => $request->password,
-        ]);
+        DB::transaction(function () use ($request) {
+            $request->user()->forceFill([
+                'password' => $request->validated('password'),
+                'remember_token' => Str::random(60),
+            ])->save();
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Password updated.')]);
+            DB::connection(config('session.connection'))
+                ->table(config('session.table'))
+                ->where('user_id', $request->user()->getAuthIdentifier())
+                ->where('id', '!=', $request->session()->getId())
+                ->delete();
+        });
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Password updated. Other sessions have been signed out.')]);
 
         return back();
     }

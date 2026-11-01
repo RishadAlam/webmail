@@ -5,6 +5,7 @@ namespace App\Http\Requests\Settings;
 use App\Concerns\ProfileValidationRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class ProfileUpdateRequest extends FormRequest
 {
@@ -17,6 +18,16 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return $this->profileRules($this->user()->id);
+        return [
+            'name' => $this->nameRules(),
+            'email' => ['sometimes', 'required', 'string', Rule::in([$this->user()->email])],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'email.in' => 'WebMail login addresses are managed by an administrator.',
+        ];
     }
 }

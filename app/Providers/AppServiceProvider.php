@@ -2,17 +2,22 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use App\Providers\Mail\FakeIngressGateway;
 use App\Providers\Mail\IngressGateway;
 use App\Providers\Mail\MockOutboundProvider;
 use App\Providers\Mail\OutboundMailProvider;
 use App\Providers\Mail\ResendProvider;
 use App\Providers\Mail\WorkerIngressGateway;
+use App\Services\ProductionConfiguration;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Passkeys\Contracts\PasskeyUser;
+use Laravel\Passkeys\Passkeys;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,8 +35,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if (app()->isProduction() && config('database.default') !== 'pgsql') {
-            throw new \RuntimeException('Production Postroom requires durable PostgreSQL; ephemeral SQLite is forbidden.');
+        // Passkey login bypasses Fortify's password/TOTP pipeline. Do not grant admin MFA here.
+        Passkeys::authorizeLoginUsing(fn ($request, PasskeyUser $user): bool => $user instanceof User && $user->active && $user->role === 'member');
+        if (app()->isProduction()) {
+            app(ProductionConfiguration::class)->assertSafe();
+            URL::forceRootUrl(config('app.url'));
+            URL::forceScheme('https');
         }
         $this->configureDefaults();
     }

@@ -2,8 +2,14 @@
 
 namespace Tests\Feature\Settings;
 
+use App\Models\Address;
+use App\Models\Draft;
+use App\Models\Mailbox;
+use App\Models\Message;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class ProfileUpdateTest extends TestCase
@@ -21,7 +27,7 @@ class ProfileUpdateTest extends TestCase
         $response->assertOk();
     }
 
-    public function test_profile_information_can_be_updated()
+    public function test_name_can_be_updated_without_submitting_a_login_address(): void
     {
         $user = User::factory()->create();
 
@@ -29,18 +35,15 @@ class ProfileUpdateTest extends TestCase
             ->actingAs($user)
             ->patch(route('profile.update'), [
                 'name' => 'Test User',
-                'email' => 'test@example.com',
             ]);
 
         $response
             ->assertSessionHasNoErrors()
             ->assertRedirect(route('profile.edit'));
 
-        $user->refresh();
-
-        $this->assertSame('Test User', $user->name);
-        $this->assertSame('test@example.com', $user->email);
-        $this->assertNull($user->email_verified_at);
+        $this->assertSame('Test User', $user->fresh()->name);
+        $this->assertSame($user->email, $user->fresh()->email);
+        $this->assertNotNull($user->fresh()->email_verified_at);
     }
 
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged()
@@ -61,39 +64,79 @@ class ProfileUpdateTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
-    public function test_user_can_delete_their_account()
+    #[DataProvider('accountRoles')]
+    public function test_login_address_cannot_be_changed_in_profile_settings(string $role): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => $role]);
+        $originalEmail = $user->email;
+        $originalName = $user->name;
+        $box = Mailbox::create(['name' => 'Account', 'email' => $user->email]);
+        $box->users()->attach($user, ['can_send' => true]);
+        $address = Address::create(['mailbox_id' => $box->id, 'email' => $user->email, 'active' => true]);
 
-        $response = $this
-            ->actingAs($user)
-            ->delete(route('profile.destroy'), [
-                'password' => 'password',
-            ]);
+        $this->actingAs($user)->patchJson(route('profile.update'), [
+            'name' => 'Unexpected rename',
+            'email' => 'unprovisioned@example.net',
+        ])->assertUnprocessable()->assertJsonValidationErrors('email');
 
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect(route('home'));
-
-        $this->assertGuest();
-        $this->assertNull($user->fresh());
+        $this->assertSame($originalEmail, $user->fresh()->email);
+        $this->assertSame($originalName, $user->fresh()->name);
+        $this->assertNotNull($user->fresh()->email_verified_at);
+        $this->assertSame($user->email, $box->fresh()->email);
+        $this->assertSame($user->email, $address->fresh()->email);
     }
 
-    public function test_correct_password_must_be_provided_to_delete_account()
+    #[DataProvider('accountRoles')]
+    public function test_accounts_cannot_delete_themselves_even_without_mail(string $role): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => $role]);
 
-        $response = $this
-            ->actingAs($user)
-            ->from(route('profile.edit'))
-            ->delete(route('profile.destroy'), [
-                'password' => 'wrong-password',
-            ]);
+        $this->actingAs($user)->deleteJson(route('profile.destroy'), [
+            'password' => 'password',
+        ])->assertForbidden();
 
-        $response
-            ->assertSessionHasErrors('password')
-            ->assertRedirect(route('profile.edit'));
+        $this->assertAuthenticatedAs($user);
+        $this->assertModelExists($user);
+    }
 
-        $this->assertNotNull($user->fresh());
+    #[DataProvider('accountRoles')]
+    public function test_self_deletion_is_denied_without_losing_drafts_accepted_mail_or_membership(string $role): void
+    {
+        $user = User::factory()->create(['role' => $role]);
+        $box = Mailbox::create(['name' => 'Account', 'email' => $user->email]);
+        $box->users()->attach($user, ['can_send' => true]);
+        $address = Address::create(['mailbox_id' => $box->id, 'email' => $user->email, 'active' => true]);
+        $draft = Draft::create([
+            'user_id' => $user->id, 'mailbox_id' => $box->id, 'from_email' => $user->email,
+            'to' => ['recipient@example.net'], 'cc' => [], 'bcc' => [],
+            'subject' => 'Unsent fictional work', 'body' => '<p>Keep this draft.</p>',
+        ]);
+        $raw = "From: sender@example.net\r\nSubject: Accepted fictional mail\r\n\r\nKeep this message.";
+        $message = Message::create([
+            'mailbox_id' => $box->id, 'thread_id' => 'accepted', 'from_email' => 'sender@example.net',
+            'to' => [$user->email], 'cc' => [], 'subject' => 'Accepted fictional mail',
+            'body_text' => 'Keep this message.', 'raw_mime' => $raw,
+        ]);
+        DB::table('ingress_receipts')->insert([
+            'id' => 'accepted-receipt', 'message_id' => $message->id, 'checksum' => hash('sha256', $raw),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->actingAs($user)->deleteJson(route('profile.destroy'), [
+            'password' => 'password',
+        ])->assertForbidden();
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertModelExists($user);
+        $this->assertModelExists($address);
+        $this->assertDatabaseHas('mailbox_user', ['user_id' => $user->id, 'mailbox_id' => $box->id, 'can_send' => true]);
+        $this->assertDatabaseHas('ingress_receipts', ['id' => 'accepted-receipt', 'message_id' => $message->id]);
+        $this->assertSame('<p>Keep this draft.</p>', $draft->fresh()->body);
+        $this->assertSame($raw, $message->fresh()->raw_mime);
+    }
+
+    public static function accountRoles(): array
+    {
+        return [['member'], ['owner']];
     }
 }

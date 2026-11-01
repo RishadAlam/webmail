@@ -1,0 +1,58 @@
+# Strict-free pilot only. Review DEPLOYMENT.md and all release gates before creation.
+services:
+    - type: web
+      name: hookstack-webmail-pilot
+      runtime: docker
+      plan: free
+      numInstances: 1
+      autoDeployTrigger: 'off'
+      dockerfilePath: ./Dockerfile
+      dockerContext: .
+      healthCheckPath: /up
+      maxShutdownDelaySeconds: 30
+      envVars:
+          - key: APP_NAME
+            value: WebMail by Hookstack
+          - key: APP_ENV
+            value: production
+          - key: APP_DEBUG
+            value: 'false'
+          - key: APP_URL
+            sync: false
+          - key: APP_KEY
+            sync: false
+          - key: MAIL_DOMAIN
+            sync: false
+          - key: DB_CONNECTION
+            value: pgsql
+          - key: DB_URL
+            sync: false
+          - key: DB_SSLMODE
+            value: verify-full
+          - key: SESSION_DRIVER
+            value: database
+          - key: SESSION_ENCRYPT
+            value: 'true'
+          - key: SESSION_SECURE_COOKIE
+            value: 'true'
+          - key: SESSION_HTTP_ONLY
+            value: 'true'
+          - key: SESSION_SAME_SITE
+            value: lax
+          - key: CACHE_STORE
+            value: database
+          - key: QUEUE_CONNECTION
+            value: database
+          - key: LOG_CHANNEL
+            value: stderr
+          - key: LOG_LEVEL
+            value: warning
+          - key: STRICT_FREE_MODE
+            value: 'true'
+          - key: POSTROOM_PROVIDER
+            value: resend
+          - key: EXTERNAL_SENDING_ENABLED
+            value: 'false'
+          - key: MAIL_MAILER
+            value: array
+# No Render database, worker, cron, persistent disk, paid service or automatic keep-alive.
