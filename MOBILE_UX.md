@@ -1,4 +1,4 @@
-# Postroom — mobile app-like UX contract
+# WebMail — mobile app-like UX contract
 
 **Revision:** 2 · November 1, 2026  
 **Purpose:** A Gmail-familiar mobile webmail experience built from the same Laravel/Inertia application. This is a PWA-capable web app, not a promised App Store/Play Store native binary.
@@ -57,7 +57,7 @@ After a reversible archive, offer Undo and maintain a tested server-side rollbac
 
 Pull-to-refresh is optional progressive enhancement at the top of the inbox only. Do not hijack body/editor scrolling or create repeated provider synchronization requests. Always provide an explicit Refresh action. Rate-limit refreshes and show actual last-sync state.
 
-Gmail's documented swipe and selection patterns are reference material; these exact defaults are Postroom's design choices. [S32]
+Gmail's documented swipe and selection patterns are reference material; these exact defaults are WebMail's design choices. [S32]
 
 ## 5. Conversation and contextual actions
 

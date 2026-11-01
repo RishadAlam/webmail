@@ -1,15 +1,15 @@
 # Codex amendment — Gmail-style desktop and app-like mobile
 
-Use this prompt when the previous Postroom specification has already been supplied. For a new repository, use the updated `CODEX_PROMPT.md` instead.
+Use this prompt when the previous WebMail specification has already been supplied. For a new repository, use the updated `CODEX_PROMPT.md` instead.
 
 ```text
-Update the Postroom project's frontend specification and implementation.
+Update the WebMail project's frontend specification and implementation.
 
 Design reference:
 Use Gmail as the primary reference for desktop and mobile mail UI/UX.
 Recreate its familiar mail hierarchy, density, navigation, lists,
 conversation view, composer, selection, and action feedback in our own code.
-Keep our own Postroom identity, original icon, domain, and authentication.
+Keep our own WebMail identity, original icon, domain, and authentication.
 Do not copy Google logos, Google sign-in screens, proprietary artwork,
 production source code, or claims of affiliation.
 

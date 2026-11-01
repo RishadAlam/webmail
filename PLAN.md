@@ -1,7 +1,7 @@
-# Postroom — a strict-free Laravel webmail planning specification
+# WebMail — a strict-free Laravel webmail planning specification
 
 **Planning date:** November 1, 2026  
-**Working product name:** Postroom (a placeholder, not a trademark clearance)  
+**Product name:** WebMail by Hookstack
 **Purpose:** A private, single-business webmail application with administrator-created users, Cloudflare inbound email, and Resend outbound email.  
 **Delivery status:** This package is a build specification, not implemented or tested application code.  
 **Design revision:** 2 — Gmail-style desktop with a distinct app-like mobile experience. See `DESIGN.md`, `MOBILE_UX.md`, and `UI_ACCEPTANCE.md`. This revision changes the frontend specification; existing service/version facts must still be reverified before implementation.
@@ -16,7 +16,7 @@ Four boundaries are non-negotiable:
 
 1. **Laravel needs PHP hosting.** Do not pretend a conventional Laravel application runs natively on Workers Free. The proposed PHP host is Render Free using Docker. Cloudflare Containers is not a strict-free substitute: its documented pricing requires Workers Paid. [S3, S4]
 2. **Bootstrap cannot happen entirely inside an application that does not yet exist.** The owner must initially create/authorize provider accounts and supply deployment secrets. Account verification, billing, provider suspension appeals, and an unavailable application’s recovery cannot always be controlled through application APIs.
-3. **Routine operations stay inside Postroom.** Users never need Cloudflare, Resend, Render, or Neon accounts. After initial authorization, an administrator manages users, addresses, routing, domain verification, sending, limits, and diagnostics inside Postroom wherever supported APIs exist.
+3. **Routine operations stay inside WebMail.** Users never need Cloudflare, Resend, Render, or Neon accounts. After initial authorization, an administrator manages users, addresses, routing, domain verification, sending, limits, and diagnostics inside WebMail wherever supported APIs exist.
 4. **Strict-free mode excludes R2.** Do not activate R2, Workers Paid, paid compute, add-ons, or automatic overages. A future R2 adapter can be designed, but is not part of this deployment.
 
 Resend's acceptable-use policy requires opted-in recipients and prohibits unsolicited messages, including cold outreach. Before enabling external sending, the owner must confirm that the intended correspondence is permitted. This application must not be presented as an unrestricted SMTP service. [S14]
@@ -97,13 +97,15 @@ A service can become unavailable at a free quota without generating a bill. The 
 
 ### Unavoidable owner-only bootstrap
 
-The owner creates or authorizes Cloudflare, Resend, Render, and Neon accounts. A deployment process supplies `APP_KEY`, database connectivity, HTTPS application URL, and a one-time installation secret. These minimal secrets must exist before a browser wizard can securely save configuration.
+The owner creates or authorizes Cloudflare, Resend, Render, and Neon accounts. A deployment process supplies `APP_KEY`, database connectivity, the HTTPS application URL and the receiving domain. These minimal settings must exist before the application can securely save provider configuration.
+
+**Implemented November 1:** the initial owner is created by the single-use interactive `webmail:bootstrap-owner` command from an owner-controlled machine. It refuses noninteractive input, existing users and a consumed installation latch; it grants no MFA exemption. Render Free has no shell/one-off jobs, so this command and migrations use the reviewed image outside Render. This is an explicit bootstrap exception, not routine mailbox administration. No browser claim route or one-time browser installation secret is implemented. See `docs/DEPLOYMENT.md`. The browser installation/provisioning wizard below remains the target, not a completion claim.
 
 Provide a local Docker development profile using PostgreSQL and provider fakes. No real credentials should be needed to run tests or inspect the interface. Supply a deployment manifest with explicitly free service choices. Any optional provisioning script must print a resource/price plan and require approval before external side effects.
 
 ### In-application wizard
 
-Use short, resumable steps with a visible status for each connection:
+Target: short, resumable steps with a visible status for each connection. Current in-app slices cover encrypted owner connections/read-only checks, routine bounded user/mailbox/alias administration and idempotent recipient-directory synchronization. Domain/DNS/Worker/webhook provisioning, exact DNS preview/approval and a unified go-live wizard remain unfinished:
 
 1. Claim the installation using the one-time secret, create the owner, and enable owner MFA.
 2. Connect Cloudflare with scoped tokens. Enumerate available accounts and zones, validate permissions, and select the business domain.
@@ -145,7 +147,7 @@ Creating a user/address is a database operation followed by synchronization of t
 
 The initial scope includes Inbox, Sent, Drafts, Archive, Trash, Spam, starred messages, folders/labels, contacts, signatures, search, compose, reply, reply-all, manual forwarding, and shared-mailbox access. Implement only visible controls that actually work.
 
-Use Gmail as the primary desktop/mobile interaction reference, with Postroom identity and original implementation. The desktop default is a top search bar, collapsible left navigation, and a full-width mail list; opening a thread replaces that list in the main surface. Provide an optional right-hand reading pane on sufficiently wide screens rather than forcing three panes. A lower-right desktop compose window can minimize/expand. Gmail documents alternative layouts and optional reading panes. [S30, S31]
+Use Gmail as the primary desktop/mobile interaction reference, with WebMail identity and original implementation. The desktop default is a top search bar, collapsible left navigation, and a full-width mail list; opening a thread replaces that list in the main surface. Provide an optional right-hand reading pane on sufficiently wide screens rather than forcing three panes. A lower-right desktop compose window can minimize/expand. Gmail documents alternative layouts and optional reading panes. [S30, S31]
 
 Mobile is a separate app-style single-pane layout: rounded search header, drawer/account navigation, readable avatar-based rows, floating Compose action, full-screen conversations and composer, contextual sheets, and accessible swipe/selection actions. Preserve Back navigation, list position, search, and draft state. Do not add unsupported Chat, Meet, category classification, or decorative bottom navigation. Detailed geometry and behavior are specified in `MOBILE_UX.md`.
 

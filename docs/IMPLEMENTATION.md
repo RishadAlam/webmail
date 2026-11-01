@@ -1,4 +1,6 @@
-# Postroom Phase 0 and responsive mail implementation plan
+# WebMail Phase 0 and responsive mail implementation plan
+
+This is the historical Phase 0 plan. The later rename, review, administration and runtime work is tracked in [WEBMAIL_REVIEW_PLAN.md](WEBMAIL_REVIEW_PLAN.md) and [STATUS.md](../STATUS.md); old scope notes below are not the current release-status report.
 
 **Goal:** Establish a runnable Laravel pilot with durable inbound/outbound contracts and functioning Gmail-familiar desktop/mobile vertical slices.
 **Architecture:** Laravel 13.39.0, Inertia 3, React 19; PostgreSQL production source of truth. A small TypeScript Worker uses D1 for durable ingress; deterministic local providers require no credentials. Desktop/mobile share one draft and server authorization.

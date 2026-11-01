@@ -1,4 +1,4 @@
-# Postroom — UI/UX acceptance and evidence checklist
+# WebMail — UI/UX acceptance and evidence checklist
 
 **Revision:** 2 · November 1, 2026  
 **Initial status:** Every case is **not run**. This document describes required tests; it is not a test report.

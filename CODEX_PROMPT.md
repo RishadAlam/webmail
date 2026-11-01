@@ -1,6 +1,6 @@
-# Codex master build prompt — Postroom
+# Codex master build prompt — WebMail
 
-You are building **Postroom**, a private, polished, strict-free Laravel webmail application for a small business that already owns a domain managed through Cloudflare.
+You are building **WebMail**, a private, polished, strict-free Laravel webmail application for a small business that already owns a domain managed through Cloudflare.
 
 Work as a senior Laravel engineer, email-systems engineer, security reviewer, and product designer. Deliver functioning, tested software—not a mock dashboard, not a landing page, and not an exaggerated claim of production readiness.
 
@@ -110,7 +110,7 @@ Exports must be authorized, resumable/bounded, integrity-checked, and backed by 
 
 ## 10. Gmail-style design, app-like mobile, and impeccable taste
 
-The user explicitly chose Gmail as the desktop and mobile UI/UX reference. Follow `DESIGN.md`, `MOBILE_UX.md`, and `UI_ACCEPTANCE.md`. This replaces the earlier mandatory three-pane desktop layout and teal-first aesthetic. Keep Postroom's own name, original icon, domain, and authentication; do not use Google's logo, a Google sign-in lookalike, proprietary assets, copied production code, or claims of affiliation.
+The user explicitly chose Gmail as the desktop and mobile UI/UX reference. Follow `DESIGN.md`, `MOBILE_UX.md`, and `UI_ACCEPTANCE.md`. This replaces the earlier mandatory three-pane desktop layout and teal-first aesthetic. Keep WebMail's own name, original icon, domain, and authentication; do not use Google's logo, a Google sign-in lookalike, proprietary assets, copied production code, or claims of affiliation.
 
 Use the reviewed/pinned Impeccable skill with Codex when available. Verify supported initialization, critique, audit, and polish commands; do not pretend a tool ran when unavailable. Use the existing customized accessible UI/editor stack, Playwright, axe-core, and manual visual review. Keep all real mail and credentials out of design tools.
 

@@ -2,7 +2,7 @@
 
 ## Product and sources
 
-This is Postroom: a private Laravel webmail pilot with a strict-free deployment. Read `PLAN.md`, `DESIGN.md`, `MOBILE_UX.md`, `UI_ACCEPTANCE.md`, and the relevant official references in `SOURCES.md`. Verify current APIs and compatible stable versions; commit dependency lockfiles. Keep this file concise and move implementation detail to the plan or focused documentation.
+This is WebMail: a private Laravel webmail pilot with a strict-free deployment. Read `PLAN.md`, `DESIGN.md`, `MOBILE_UX.md`, `UI_ACCEPTANCE.md`, and the relevant official references in `SOURCES.md`. Verify current APIs and compatible stable versions; commit dependency lockfiles. Keep this file concise and move implementation detail to the plan or focused documentation.
 
 ## Architecture and budget
 
@@ -26,7 +26,7 @@ Never commit real credentials or use real messages in fixtures, screenshots, tel
 
 ## Design
 
-Follow the Gmail-style desktop and app-like mobile direction in `DESIGN.md` and `MOBILE_UX.md`. It supersedes the older forced three-pane layout. Default desktop is list → conversation with an optional reading pane; mobile uses full-screen routes, drawer/sheets, touch controls, and a full-screen composer. Share draft/business state across layouts. Keep original Postroom branding, not Google logos or authentication imitation.
+Follow the Gmail-style desktop and app-like mobile direction in `DESIGN.md` and `MOBILE_UX.md`. It supersedes the older forced three-pane layout. Default desktop is list → conversation with an optional reading pane; mobile uses full-screen routes, drawer/sheets, touch controls, and a full-screen composer. Share draft/business state across layouts. Keep original WebMail branding, not Google logos or authentication imitation.
 
 Use reviewed/pinned Impeccable guidance when available, accessible components, fictional content, and manual browser review. No generic card dashboard, unsupported Gmail modules, fake metrics, or decorative bottom navigation. Keep administration and accurate usage bars usable on phones.
 

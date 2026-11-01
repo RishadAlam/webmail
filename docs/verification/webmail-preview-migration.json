@@ -1,0 +1,278 @@
+{
+    "recorded_at_utc": "2026-11-01T09:00:51.777849+00:00",
+    "scope": "Authorized additive migrations on the existing local WebMail preview, preserving data and authentication state",
+    "environment_guard": {
+        "environment": "local",
+        "driver": "pgsql",
+        "effective_current_database": "postroom",
+        "local_postgres_host": "postgres",
+        "provider": "mock",
+        "passed": true
+    },
+    "backup": {
+        "path": "/tmp/webmail-preview-before-review-l_o7_kiv/postroom.pgdump",
+        "mode": "0o600",
+        "directory_mode": "0o700",
+        "bytes": 65886,
+        "sha256": "b467ff9f02816b086d787bc0df6774f0cb38d89488c055936181ca79f90762f4",
+        "archive_list_check": "passed",
+        "method": "pg_dump custom-format archive streamed directly into a private local file",
+        "archive_validation": "pg_restore --list exited 0; no restore or data reset performed",
+        "dump_command": "docker compose exec -T postgres pg_dump --username=postroom --dbname=postroom --format=custom"
+    },
+    "migration": {
+        "command": "rtk proxy docker compose exec -T app php artisan migrate --force --no-ansi --path=database/migrations/2026_11_01_000004_create_recipient_directory_syncs.php --path=database/migrations/2026_11_01_000005_add_message_reply_addresses.php --path=database/migrations/2026_11_01_000006_create_installation_state.php --path=database/migrations/2026_11_01_000007_create_provider_connections.php --path=database/migrations/2026_11_01_000008_add_address_enabled_policy.php --path=database/migrations/2026_11_01_000009_retain_receipts_after_message_deletion.php",
+        "applied": [
+            "2026_11_01_000004_create_recipient_directory_syncs",
+            "2026_11_01_000005_add_message_reply_addresses",
+            "2026_11_01_000006_create_installation_state",
+            "2026_11_01_000007_create_provider_connections",
+            "2026_11_01_000008_add_address_enabled_policy",
+            "2026_11_01_000009_retain_receipts_after_message_deletion"
+        ],
+        "exit_code": 0,
+        "result": "passed",
+        "scope_enforced_by_explicit_paths": true
+    },
+    "preservation": {
+        "method": "Read-only repeatable-read PostgreSQL snapshots through the query builder. Hash raw stored rows without model decryption. Sort per-row SHA-256 digests before hashing each group. After migration, compare exactly the original columns so new nullable/defaulted columns do not mask changes to existing data.",
+        "snapshot_paths": {
+            "before": "/tmp/webmail-preview-before-review-l_o7_kiv/before.json",
+            "after": "/tmp/webmail-preview-before-review-l_o7_kiv/after.json",
+            "comparison": "/tmp/webmail-preview-before-review-l_o7_kiv/comparison.json"
+        },
+        "result": "passed",
+        "changed_groups": [],
+        "existing_tables": {
+            "users": {
+                "count_before": 2,
+                "count_after": 2,
+                "sha256_before": "b63e5c01fe49d440c4bcd277a526374dbaf16799026f656ffa260c80802bb881",
+                "sha256_after": "b63e5c01fe49d440c4bcd277a526374dbaf16799026f656ffa260c80802bb881",
+                "unchanged": true
+            },
+            "messages": {
+                "count_before": 17,
+                "count_after": 17,
+                "sha256_before": "e6521946f9a15286c29b6fc842f2104a9cd1af3eab74e993de17f2c366f7bda8",
+                "sha256_after": "e6521946f9a15286c29b6fc842f2104a9cd1af3eab74e993de17f2c366f7bda8",
+                "unchanged": true
+            },
+            "drafts": {
+                "count_before": 0,
+                "count_after": 0,
+                "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "unchanged": true
+            },
+            "send_intents": {
+                "count_before": 0,
+                "count_after": 0,
+                "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "unchanged": true
+            },
+            "ingress_receipts": {
+                "count_before": 0,
+                "count_after": 0,
+                "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "unchanged": true
+            },
+            "mailboxes": {
+                "count_before": 2,
+                "count_after": 2,
+                "sha256_before": "c828b51372a24a873b3d3a80eeb9669f9b6429db6ac13d34f1f923b5a862a0c4",
+                "sha256_after": "c828b51372a24a873b3d3a80eeb9669f9b6429db6ac13d34f1f923b5a862a0c4",
+                "unchanged": true
+            },
+            "addresses": {
+                "count_before": 2,
+                "count_after": 2,
+                "sha256_before": "162c02306fe699d649959db46f3d5e20e6fb3d57886311744538dde8287744bf",
+                "sha256_after": "162c02306fe699d649959db46f3d5e20e6fb3d57886311744538dde8287744bf",
+                "unchanged": true
+            },
+            "mailbox_user": {
+                "count_before": 2,
+                "count_after": 2,
+                "sha256_before": "ff5a758bf7fd81803a2dfeb28451013f55ff407eb4860825b0aca56803cc6dc0",
+                "sha256_after": "ff5a758bf7fd81803a2dfeb28451013f55ff407eb4860825b0aca56803cc6dc0",
+                "unchanged": true
+            },
+            "quota_ledger": {
+                "count_before": 0,
+                "count_after": 0,
+                "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "unchanged": true
+            },
+            "provider_events": {
+                "count_before": 0,
+                "count_after": 0,
+                "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "unchanged": true
+            },
+            "mail_operations": {
+                "count_before": 0,
+                "count_after": 0,
+                "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "unchanged": true
+            },
+            "passkeys": {
+                "count_before": 0,
+                "count_after": 0,
+                "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "unchanged": true
+            },
+            "suppressions": {
+                "count_before": 0,
+                "count_after": 0,
+                "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "unchanged": true
+            },
+            "audit_events": {
+                "count_before": 0,
+                "count_after": 0,
+                "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "unchanged": true
+            }
+        },
+        "focused_fields": {
+            "encrypted_mime": {
+                "count_before": 17,
+                "count_after": 17,
+                "sha256_before": "c9fdaf254e759c562d31b7d1b7ef6e0f9c91e87a54165ba595391a9e98e5d100",
+                "sha256_after": "c9fdaf254e759c562d31b7d1b7ef6e0f9c91e87a54165ba595391a9e98e5d100",
+                "unchanged": true
+            },
+            "draft_contents": {
+                "count_before": 0,
+                "count_after": 0,
+                "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "unchanged": true
+            },
+            "user_password_mfa": {
+                "count_before": 2,
+                "count_after": 2,
+                "sha256_before": "ede2a200972debdfac94a827b9a7f78d54b76db00ae6ffb18c76f2050b3b1f96",
+                "sha256_after": "ede2a200972debdfac94a827b9a7f78d54b76db00ae6ffb18c76f2050b3b1f96",
+                "unchanged": true
+            },
+            "receipt_ids": {
+                "count_before": 0,
+                "count_after": 0,
+                "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "unchanged": true
+            },
+            "session_ids": {
+                "count_before": 13,
+                "count_after": 13,
+                "sha256_before": "3141631ef2fbda526691b000332a13b9b0c6afc83d355a85e48d422676b4e28a",
+                "sha256_after": "3141631ef2fbda526691b000332a13b9b0c6afc83d355a85e48d422676b4e28a",
+                "unchanged": true
+            }
+        },
+        "session_comparison_phase": "Immediately before and after migration, before the later unauthenticated HTTP probe",
+        "empty_table_note": "Drafts, send intents and ingress receipts were already empty; their zero counts and empty hashes remained unchanged."
+    },
+    "preview_http": {
+        "url": "http://localhost:8082/login",
+        "status": 200,
+        "title": "WebMail by Hookstack",
+        "assets": [
+            {
+                "asset": "/build/assets/app-D5ET2YfB.css",
+                "status": 200,
+                "matches_current_local_file": true
+            },
+            {
+                "asset": "/build/assets/app-DUnz_y-X.js",
+                "status": 200,
+                "matches_current_local_file": true
+            },
+            {
+                "asset": "/build/assets/arrow-right-BLG5V8uM.js",
+                "status": 200,
+                "matches_current_local_file": true
+            },
+            {
+                "asset": "/build/assets/createLucideIcon-9ZkY8pDl.js",
+                "status": 200,
+                "matches_current_local_file": true
+            },
+            {
+                "asset": "/build/assets/dist-8IdGO3fu.js",
+                "status": 200,
+                "matches_current_local_file": true
+            },
+            {
+                "asset": "/build/assets/dist-Bz7djIHi.js",
+                "status": 200,
+                "matches_current_local_file": true
+            },
+            {
+                "asset": "/build/assets/dist-CD9mOmJ_.js",
+                "status": 200,
+                "matches_current_local_file": true
+            },
+            {
+                "asset": "/build/assets/dist-CVRXV7Xx.js",
+                "status": 200,
+                "matches_current_local_file": true
+            },
+            {
+                "asset": "/build/assets/jsx-runtime-B8j0zEe4.js",
+                "status": 200,
+                "matches_current_local_file": true
+            },
+            {
+                "asset": "/build/assets/login-Dfo1oLRU.js",
+                "status": 200,
+                "matches_current_local_file": true
+            },
+            {
+                "asset": "/build/assets/react-dom-Bs1mUpjc.js",
+                "status": 200,
+                "matches_current_local_file": true
+            },
+            {
+                "asset": "/build/assets/shield-check-CrBtye-P.js",
+                "status": 200,
+                "matches_current_local_file": true
+            },
+            {
+                "asset": "/build/assets/utils-DJPu_GY6.js",
+                "status": 200,
+                "matches_current_local_file": true
+            },
+            {
+                "asset": "/build/assets/wayfinder-Bh70ToPC.js",
+                "status": 200,
+                "matches_current_local_file": true
+            }
+        ],
+        "result": "passed",
+        "authentication_performed": false,
+        "build_manifest_sha256": "0346a2284494177913d5c096166006348cd5932df91489697b49a17a4e13c908",
+        "asset_build_performed_by_this_operation": false
+    },
+    "unchanged": [
+        "No seed/reset operation",
+        "No APP_KEY or .env edit",
+        "No password/MFA/recovery-code changes",
+        "No user session used or revoked",
+        "No provider or DNS operation"
+    ],
+    "limitations": [
+        "Local preview and current local build only; no live-provider/deployment claim",
+        "Backup is private under /tmp and is not an off-host durable backup"
+    ]
+}

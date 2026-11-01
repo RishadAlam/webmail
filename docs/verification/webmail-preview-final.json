@@ -1,0 +1,66 @@
+{
+    "checked_at_utc": "2026-11-01T09:31:48.623897+00:00",
+    "url": "http://localhost:8082/login",
+    "status": 200,
+    "webmail_brand_in_html": true,
+    "asset_count": 14,
+    "assets": [
+        {
+            "asset": "/build/assets/app-BrQWe5bd.css",
+            "matches_local_build": true
+        },
+        {
+            "asset": "/build/assets/app-XkrfIukV.js",
+            "matches_local_build": true
+        },
+        {
+            "asset": "/build/assets/arrow-right-BLG5V8uM.js",
+            "matches_local_build": true
+        },
+        {
+            "asset": "/build/assets/createLucideIcon-9ZkY8pDl.js",
+            "matches_local_build": true
+        },
+        {
+            "asset": "/build/assets/dist-8IdGO3fu.js",
+            "matches_local_build": true
+        },
+        {
+            "asset": "/build/assets/dist-Bz7djIHi.js",
+            "matches_local_build": true
+        },
+        {
+            "asset": "/build/assets/dist-CD9mOmJ_.js",
+            "matches_local_build": true
+        },
+        {
+            "asset": "/build/assets/dist-CVRXV7Xx.js",
+            "matches_local_build": true
+        },
+        {
+            "asset": "/build/assets/jsx-runtime-B8j0zEe4.js",
+            "matches_local_build": true
+        },
+        {
+            "asset": "/build/assets/login-Eknh3S73.js",
+            "matches_local_build": true
+        },
+        {
+            "asset": "/build/assets/react-dom-Bs1mUpjc.js",
+            "matches_local_build": true
+        },
+        {
+            "asset": "/build/assets/shield-check-CrBtye-P.js",
+            "matches_local_build": true
+        },
+        {
+            "asset": "/build/assets/utils-DJPu_GY6.js",
+            "matches_local_build": true
+        },
+        {
+            "asset": "/build/assets/wayfinder-Bh70ToPC.js",
+            "matches_local_build": true
+        }
+    ],
+    "scope": "Anonymous local preview HTTP and built assets only; no credentials or mail accessed."
+}

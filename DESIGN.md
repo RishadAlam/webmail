@@ -1,4 +1,4 @@
-# Postroom — Gmail-style desktop and mobile design specification
+# WebMail — Gmail-style desktop and mobile design specification
 
 **Revision:** 2 · November 1, 2026  
 **Status:** Implementation specification, not a completed interface or tested application.  
@@ -8,7 +8,7 @@
 
 Use Gmail's familiar desktop and mobile mail workflows as the primary reference. Recreate the recognizable hierarchy, density, navigation, composition, and feedback patterns in our own implementation. This replaces the earlier mandatory three-pane desktop layout and the earlier teal-first visual direction.
 
-The result should immediately feel familiar to a Gmail user, while clearly being **Postroom**, the business's independent mail service. Keep our name, original icon, domain, and authentication identity. Do not use Google's logo, a Google sign-in lookalike, proprietary artwork, extracted production code, or claims of Google affiliation. Use licensed open-source assets and original code.
+The result should immediately feel familiar to a Gmail user, while clearly being **WebMail**, the business's independent mail service. Keep our name, original icon, domain, and authentication identity. Do not use Google's logo, a Google sign-in lookalike, proprietary artwork, extracted production code, or claims of Google affiliation. Use licensed open-source assets and original code.
 
 This is a close Gmail-style mail experience, not a promise of pixel-identical replication across every Gmail account, experiment, or operating-system version. Review current public Google references before implementation and record the chosen reference state. Gmail documents alternative inbox layouts and optional reading panes; select a deliberate default rather than combining incompatible layouts. [S30, S31]
 
@@ -18,7 +18,7 @@ Backend architecture, strict-free restrictions, provider policies, administratio
 
 Read this file and `MOBILE_UX.md` before scaffolding screens. Use the reviewed and pinned Impeccable design skill when available; verify its installed commands rather than inventing them. Use its design-context, critique, accessibility-audit, and polish workflows as supported by that version. Record unavailable tools honestly. [S27]
 
-Create a reference matrix covering desktop inbox, conversation, composer, settings, mobile inbox, mobile conversation, and mobile compose. Each reference note should say what pattern is being adopted, what Postroom changes, and what backend capability is required. Public references must not contain real account data.
+Create a reference matrix covering desktop inbox, conversation, composer, settings, mobile inbox, mobile conversation, and mobile compose. Each reference note should say what pattern is being adopted, what WebMail changes, and what backend capability is required. Public references must not contain real account data.
 
 Build functional screens before polishing screenshots. Review realistic fictional mail, including long and missing subjects, international names, multi-recipient threads, quota holds, slow synchronization, and empty folders. A starter-kit component gallery is not the finished product.
 
@@ -26,7 +26,7 @@ Use Playwright screenshots, axe-core checks, keyboard review, and real-device re
 
 ## 3. Visual system
 
-These are **Postroom starting tokens**, not a claim to reproduce Google's exact design tokens. Validate contrast and adjust before shipping.
+These are **WebMail starting tokens**, not a claim to reproduce Google's exact design tokens. Validate contrast and adjust before shipping.
 
 | Token              | Light starting value | Purpose                                                  |
 | ------------------ | -------------------- | -------------------------------------------------------- |
@@ -54,7 +54,7 @@ Use one consistent icon family, initially Lucide, customized for optical size an
 
 At approximately 1024 CSS px and wider, provide:
 
-- A compact top app bar: menu toggle, Postroom identity, broad rounded mail search, search options, settings, and account/avatar controls.
+- A compact top app bar: menu toggle, WebMail identity, broad rounded mail search, search options, settings, and account/avatar controls.
 - A collapsible left navigation, approximately 240–256 px expanded, with Compose, Inbox, Starred, Sent, Drafts, All mail/Archive, Spam, Trash, labels, and mailbox switcher where applicable.
 - A large, calm mail surface containing a compact toolbar and message list.
 - A quick-settings side panel for implemented preferences only: appearance, density, reading-pane mode, and navigation behavior.

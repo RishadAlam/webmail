@@ -1,0 +1,129 @@
+{
+    "recorded_at_utc": "2026-11-01T08:54:11Z",
+    "scope": "WebMail account safety, recipient directory, bounded administration, explicit Trash deletion, and integration review",
+    "environment": "Local development host and Docker PostgreSQL; fictional fixtures and simulated providers",
+    "server_sqlite": {
+        "command": "rtk proxy php artisan test",
+        "database": "SQLite :memory: from phpunit.xml",
+        "result": "passed",
+        "tests": 189,
+        "passed": 173,
+        "skipped": 16,
+        "assertions": 897,
+        "duration_seconds": 9.46,
+        "exit_code": 0,
+        "skip_reason": "Existing tests for disabled registration, email verification, and email-based password recovery features"
+    },
+    "server_postgresql": {
+        "database_verification_command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_test app php -r 'require \"vendor/autoload.php\"; $app = require \"bootstrap/app.php\"; $app->make(\\Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); fwrite(STDOUT, \\Illuminate\\Support\\Facades\\DB::scalar(\"select current_database()\").PHP_EOL);'",
+        "database_verification_output": "postroom_test",
+        "command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_test app php artisan test --compact",
+        "database": "postroom_test",
+        "result": "passed",
+        "tests": 189,
+        "passed": 173,
+        "skipped": 16,
+        "assertions": 897,
+        "duration_seconds": 8.35,
+        "exit_code": 0,
+        "isolation": "Verified current_database() in the exact environment before the suite; main postroom database was not migrated or reset"
+    },
+    "postgresql_concurrency": {
+        "database_verification_command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_concurrency app php -r 'require \"vendor/autoload.php\"; $app = require \"bootstrap/app.php\"; $app->make(\\Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); fwrite(STDOUT, \\Illuminate\\Support\\Facades\\DB::scalar(\"select current_database()\").PHP_EOL);'",
+        "database_verification_output": "postroom_concurrency",
+        "command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_concurrency app php scripts/verify-concurrency.php",
+        "result": "passed",
+        "exit_code": 0,
+        "last_slot_competitors": 6,
+        "admitted": 1,
+        "repeat_requests": 6,
+        "provider_calls": 1,
+        "provider": "Local instrumented deterministic test double",
+        "isolation": "The script checks APP_ENV=testing, PostgreSQL, and database name before migrate:fresh on this disposable database"
+    },
+    "http_auth_runtime": {
+        "database_verification_command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_auth_e2e app php -r 'require \"vendor/autoload.php\"; $app = require \"bootstrap/app.php\"; $app->make(\\Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); fwrite(STDOUT, \\Illuminate\\Support\\Facades\\DB::scalar(\"select current_database()\").PHP_EOL);'",
+        "database_verification_output": "postroom_auth_e2e",
+        "migration_command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_auth_e2e app php artisan migrate --force",
+        "migrations_applied": [
+            "2026_11_01_000004_create_recipient_directory_syncs",
+            "2026_11_01_000005_add_message_reply_addresses",
+            "2026_11_01_000006_create_installation_state",
+            "2026_11_01_000007_create_provider_connections",
+            "2026_11_01_000008_add_address_enabled_policy",
+            "2026_11_01_000009_retain_receipts_after_message_deletion"
+        ],
+        "migration_exit_code": 0,
+        "command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_auth_e2e app php scripts/verify-auth-runtime.php",
+        "result": "passed",
+        "exit_code": 0,
+        "http_flow": [
+            "GET /login -> 200",
+            "GET /admin -> 302 /login",
+            "POST /login -> 302 /two-factor-challenge",
+            "GET /admin before TOTP -> 302 /login",
+            "POST /two-factor-challenge -> 302 /admin",
+            "GET /admin -> 200",
+            "GET /admin on another request -> 200",
+            "POST /logout -> 302 /",
+            "GET /admin after logout -> 302 /login"
+        ],
+        "startup": "Actual Dockerfile.local startup command on a temporary loopback HTTP port",
+        "isolation": "Guarded APP_ENV=testing and postroom_auth_e2e only; no shared browser or main database operations"
+    },
+    "worker": {
+        "command": "rtk proxy /tmp/postroom-node/node_modules/node/bin/node --import tsx --test worker/tests/ingress.test.ts",
+        "result": "passed",
+        "passed": 15,
+        "exit_code": 0,
+        "environment": "Local Miniflare and SQLite-backed D1 emulation; not deployed Cloudflare",
+        "typecheck_command": "rtk proxy /tmp/postroom-node/node_modules/node/bin/node node_modules/typescript/bin/tsc -p worker/tsconfig.json --noEmit",
+        "typecheck_exit_code": 0
+    },
+    "static_analysis": {
+        "command": "rtk proxy vendor/bin/phpstan analyse --no-progress --debug",
+        "result": "passed",
+        "errors": 0,
+        "exit_code": 0,
+        "note": "Debug mode runs without the parallel worker socket restricted by the host sandbox"
+    },
+    "formatting_at_time_of_backend_check": {
+        "command": "rtk proxy vendor/bin/pint --test",
+        "result": "reported to integration owner",
+        "exit_code": 1,
+        "remaining_files": [
+            "routes/web.php",
+            "tests/Feature/MailExperienceTest.php",
+            "app/Http/Controllers/MailController.php"
+        ],
+        "note": "Backend-slice files passed their scoped Pint check; the three integration files were still being edited by their owners"
+    },
+    "review": {
+        "files": [
+            "app/Http/Controllers/MailController.php",
+            "app/Policies/MailboxPolicy.php",
+            "app/Models/Message.php",
+            "app/Http/Middleware/PrivateResponse.php",
+            "bootstrap/app.php",
+            "app/Providers/AppServiceProvider.php",
+            "app/Http/Responses/PrivateLoginResponse.php",
+            "vendor/laravel/framework/src/Illuminate/Session/Middleware/AuthenticateSession.php"
+        ],
+        "critical_findings": [],
+        "observations": [
+            "Search uses a bound LIKE pattern within the selected authorized mailbox and excludes Spam/Trash unless explicitly selected.",
+            "Conversations are scoped to the authorized mailbox, ordered by created_at and id, and bounded to 30 messages per page.",
+            "Original MIME export checks mailbox membership, uses a numeric attachment filename, preserves bytes, and disables caching; administrator role does not grant mailbox access.",
+            "AuthenticateSession preserves the updated current-session password hash while stale password sessions are rejected; account safety tests also exercise database-session deletion and actual remembered-cookie replay.",
+            "Passkey login policy rejects owner/admin and suspended accounts, retaining the administrator password/TOTP boundary. Hardware authenticator behavior was not exercised."
+        ]
+    },
+    "limitations": {
+        "live_cloudflare_resend_neon_render": "not tested",
+        "dns_or_provider_deployment": "not changed",
+        "main_database": "not migrated, reset, or used for test fixtures",
+        "shared_browser_or_asset_build": "not run by this backend verification slice",
+        "physical_devices": "not tested",
+        "free_provider_capacity_or_billing": "not measured; local success is not proof of live capacity or provisioning"
+    }
+}

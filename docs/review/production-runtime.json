@@ -1,0 +1,372 @@
+{
+    "schema_version": 1,
+    "checked_on": "2026-11-01",
+    "scope": "Local production runtime, owner bootstrap, authentication boundaries and recovery evidence. Strict-free pilot; no hosted production or live-provider certification.",
+    "constraints": {
+        "real_mail_used": false,
+        "real_credentials_changed": false,
+        "dns_changed": false,
+        "external_services_changed": false,
+        "paid_features_activated": false,
+        "shared_public_build_modified_by_this_workstream": false,
+        "main_postroom_database_migrated": false
+    },
+    "full_php_suites": [
+        {
+            "database": "SQLite in-memory",
+            "command": "rtk php artisan test --compact",
+            "exit_code": 0,
+            "total": 217,
+            "passed": 201,
+            "skipped": 16,
+            "assertions": 1045,
+            "duration_seconds": 14.339
+        },
+        {
+            "database": "Dedicated local PostgreSQL postroom_test",
+            "preflight": "Verified APP_ENV=testing, database.default=pgsql and select current_database()=postroom_test before the suite.",
+            "command": "rtk proxy timeout 180 docker compose exec -T -e APP_ENV=testing -e DB_CONNECTION=pgsql -e DB_DATABASE=postroom_test -e DB_URL= app php artisan test --compact",
+            "exit_code": 0,
+            "total": 217,
+            "passed": 201,
+            "skipped": 16,
+            "assertions": 1045,
+            "duration_seconds": 12.62
+        }
+    ],
+    "focused_php_suites": [
+        {
+            "command": "rtk php artisan test --compact tests/Feature/ProductionRuntimeTest.php tests/Feature/OwnerBootstrapTest.php tests/Feature/Auth/ThrottleResponseTest.php tests/Feature/Auth/PasskeyLoginPolicyTest.php tests/Feature/Settings/PasswordSessionTest.php",
+            "exit_code": 0,
+            "passed": 54,
+            "assertions": 159
+        },
+        {
+            "command": "rtk php artisan test --compact tests/Feature/AdminMailboxTest.php tests/Feature/ProviderConnectionsTest.php tests/Feature/RecipientDirectoryTest.php",
+            "exit_code": 0,
+            "passed": 45,
+            "assertions": 293,
+            "scope": "Read-only code review plus isolated/mocked PHP tests, before later Cloudflare deadline tests were added; final full suites include the later changes."
+        }
+    ],
+    "red_green": [
+        {
+            "command": "rtk php artisan test --compact tests/Feature/Auth/ThrottleResponseTest.php",
+            "before": {
+                "total": 6,
+                "passed": 3,
+                "failed": 3,
+                "actual_failure": "Inertia auth requests returned 429 instead of the expected safe 303 redirect."
+            },
+            "after_command": "rtk php artisan test --compact tests/Feature/Auth/ThrottleResponseTest.php tests/Feature/Auth/AuthenticationTest.php",
+            "after": {
+                "passed": 12,
+                "assertions": 64
+            },
+            "protections": [
+                "Exact /login or /two-factor-challenge destination; arbitrary Referer ignored",
+                "Correct email, code or recovery_code field error with Retry-After seconds",
+                "Passwords/codes are not flashed",
+                "Rate limiter remains exhausted; repeated requests remain blocked",
+                "JSON clients retain 429 even with X-Inertia",
+                "Existing non-Inertia rate-limit regression remains passing"
+            ]
+        },
+        {
+            "command": "rtk php artisan test --compact tests/Feature/ProductionRuntimeTest.php",
+            "before_tls_domain_guard": {
+                "total": 34,
+                "passed": 22,
+                "failed": 12
+            },
+            "after": "All cases pass in the final focused and full suites, including an additional separate session-connection TLS test."
+        },
+        {
+            "command": "rtk php artisan test --compact tests/Feature/Auth/PasskeyLoginPolicyTest.php",
+            "before": {
+                "total": 4,
+                "passed": 1,
+                "failed": 3
+            },
+            "after": {
+                "passed": 4
+            },
+            "scope": "Owner/admin/inactive-member passkey LOGIN rejected, active-member LOGIN permitted; no MFA marker is granted on PasskeyVerified. Does not certify physical passkey devices."
+        },
+        {
+            "command": "rtk php artisan test --compact tests/Feature/OwnerBootstrapTest.php",
+            "before_error_sanitization": {
+                "total": 6,
+                "passed": 5,
+                "failed": 1
+            },
+            "after": "All owner cases pass in final suites, including sanitized database failures."
+        }
+    ],
+    "static_checks": [
+        {
+            "command": "rtk proxy php vendor/bin/phpstan analyse --no-progress --memory-limit=512M",
+            "exit_code": 0,
+            "errors": 0,
+            "note": "Used approved local execution because PHPStan's worker requires a loopback TCP socket."
+        },
+        {
+            "command": "rtk proxy php vendor/bin/pint --test app/Services/ProductionConfiguration.php app/Services/OwnerBootstrap.php app/Console/Commands app/Http/Middleware/TrustIngressProxies.php app/Providers/AppServiceProvider.php bootstrap/app.php config/deployment.php database/migrations/2026_11_01_000006_create_installation_state.php tests/Feature/ProductionRuntimeTest.php tests/Feature/OwnerBootstrapTest.php tests/Feature/Auth/ThrottleResponseTest.php tests/Feature/Auth/PasskeyLoginPolicyTest.php docker/recovery-fixture.php",
+            "exit_code": 0
+        },
+        {
+            "command": "rtk proxy sh -n docker/entrypoint.sh docker/recovery-drill.sh",
+            "exit_code": 0
+        },
+        {
+            "check": "Symfony YAML parse plus explicit field assertions",
+            "result": "One Free Docker web service; autoDeployTrigger is string off; MAIL_DOMAIN supplied explicitly; no database service.",
+            "note": "Local syntax/field validation; no Render API or account deployment performed."
+        }
+    ],
+    "image": {
+        "command": "rtk proxy docker build --tag webmail-production-review:local --file Dockerfile .",
+        "exit_code": 0,
+        "image_id": "sha256:01312e5ca676fa94c90a8646b027d5266fa77a372754d038962300cc6b815852",
+        "manifest_list": "sha256:01312e5ca676fa94c90a8646b027d5266fa77a372754d038962300cc6b815852",
+        "php_base": "php:8.4-apache@sha256:4af38a0245996e700e20ec211b9f1c44fb789ad8cc7d24c7ea81ff382b641052",
+        "frontend_modules": 2356,
+        "frontend_build_seconds": 3.42,
+        "backend_hash_comparison_files": [
+            "app/Actions/Fortify/CreateNewUser.php",
+            "app/Actions/Fortify/ResetUserPassword.php",
+            "app/Concerns/AuthorizesAdministration.php",
+            "app/Concerns/PasswordValidationRules.php",
+            "app/Concerns/ProfileValidationRules.php",
+            "app/Console/Commands/BootstrapOwner.php",
+            "app/Console/Commands/CheckProduction.php",
+            "app/Http/Controllers/AdminController.php",
+            "app/Http/Controllers/AdminMailboxController.php",
+            "app/Http/Controllers/Controller.php",
+            "app/Http/Controllers/DraftController.php",
+            "app/Http/Controllers/InternalSyncController.php",
+            "app/Http/Controllers/MailController.php",
+            "app/Http/Controllers/ProviderConnectionController.php",
+            "app/Http/Controllers/Settings/ProfileController.php",
+            "app/Http/Controllers/Settings/SecurityController.php",
+            "app/Http/Controllers/TrashController.php",
+            "app/Http/Middleware/ActiveUser.php",
+            "app/Http/Middleware/HandleAppearance.php",
+            "app/Http/Middleware/HandleInertiaRequests.php",
+            "app/Http/Middleware/PrivateResponse.php",
+            "app/Http/Middleware/TrustIngressProxies.php",
+            "app/Http/Requests/Settings/PasswordUpdateRequest.php",
+            "app/Http/Requests/Settings/ProfileUpdateRequest.php",
+            "app/Http/Requests/Settings/TwoFactorAuthenticationRequest.php",
+            "app/Http/Responses/PrivateLoginResponse.php",
+            "app/Models/Address.php",
+            "app/Models/Draft.php",
+            "app/Models/Mailbox.php",
+            "app/Models/Message.php",
+            "app/Models/ProviderConnection.php",
+            "app/Models/RecipientDirectorySync.php",
+            "app/Models/SendIntent.php",
+            "app/Models/User.php",
+            "app/Policies/MailboxPolicy.php",
+            "app/Providers/AppServiceProvider.php",
+            "app/Providers/FortifyServiceProvider.php",
+            "app/Providers/Mail/CloudflareClient.php",
+            "app/Providers/Mail/CloudflareControlPlane.php",
+            "app/Providers/Mail/FakeIngressGateway.php",
+            "app/Providers/Mail/IngressGateway.php",
+            "app/Providers/Mail/MockCloudflareControlPlane.php",
+            "app/Providers/Mail/MockOutboundProvider.php",
+            "app/Providers/Mail/OutboundMailProvider.php",
+            "app/Providers/Mail/RecipientDirectoryGateway.php",
+            "app/Providers/Mail/ResendProvider.php",
+            "app/Providers/Mail/UsageProvider.php",
+            "app/Providers/Mail/WorkerIngressGateway.php",
+            "app/Services/AdminMailboxes.php",
+            "app/Services/ConnectionConfiguration.php",
+            "app/Services/DeliveryService.php",
+            "app/Services/EventService.php",
+            "app/Services/ImportService.php",
+            "app/Services/OwnerBootstrap.php",
+            "app/Services/ProductionConfiguration.php",
+            "app/Services/RecipientDirectory.php",
+            "app/Services/SafeMail.php",
+            "app/Services/StorageBudget.php",
+            "app/Services/UsageService.php",
+            "artisan",
+            "bootstrap/app.php",
+            "bootstrap/providers.php",
+            "composer.json",
+            "composer.lock",
+            "config/app.php",
+            "config/auth.php",
+            "config/cache.php",
+            "config/database.php",
+            "config/deployment.php",
+            "config/filesystems.php",
+            "config/fortify.php",
+            "config/inertia.php",
+            "config/logging.php",
+            "config/mail.php",
+            "config/postroom.php",
+            "config/queue.php",
+            "config/services.php",
+            "config/session.php",
+            "database/migrations/0001_01_01_000000_create_users_table.php",
+            "database/migrations/0001_01_01_000001_create_cache_table.php",
+            "database/migrations/0001_01_01_000002_create_jobs_table.php",
+            "database/migrations/2024_01_01_000000_create_passkeys_table.php",
+            "database/migrations/2025_08_14_170933_add_two_factor_columns_to_users_table.php",
+            "database/migrations/2026_11_01_000001_create_postroom_tables.php",
+            "database/migrations/2026_11_01_000002_add_sent_message_correlation.php",
+            "database/migrations/2026_11_01_000003_add_recipient_delivery_states.php",
+            "database/migrations/2026_11_01_000004_create_recipient_directory_syncs.php",
+            "database/migrations/2026_11_01_000005_add_message_reply_addresses.php",
+            "database/migrations/2026_11_01_000006_create_installation_state.php",
+            "database/migrations/2026_11_01_000007_create_provider_connections.php",
+            "database/migrations/2026_11_01_000008_add_address_enabled_policy.php",
+            "database/migrations/2026_11_01_000009_retain_receipts_after_message_deletion.php",
+            "public/.htaccess",
+            "public/apple-touch-icon.png",
+            "public/favicon.ico",
+            "public/favicon.svg",
+            "public/icon-192.png",
+            "public/icon-512.png",
+            "public/index.php",
+            "public/manifest.webmanifest",
+            "public/offline.html",
+            "public/robots.txt",
+            "public/sw.js",
+            "resources/views/app.blade.php",
+            "resources/views/errors/403.blade.php",
+            "routes/console.php",
+            "routes/settings.php",
+            "routes/web.php"
+        ],
+        "runtime": "Apache document root public; www-data user; immutable application code; no development dependencies or Node/Composer binary; stderr PHP errors; graceful SIGTERM handling.",
+        "source_snapshot_verification": {
+            "includes_final_trash_draft_accounting_and_ui_changes": true,
+            "includes_enlarged_text_and_html_table_readability_fixes": true,
+            "includes_final_composer_saved_status_and_serialized_save_fixes": true,
+            "manifest": "docs/review/production-source.json",
+            "sha256": "5094c76729694c38d7eb6346797dfbf723e8a2d670fd76c4f90c8ea0b1231bc9",
+            "file_count": 276,
+            "unchanged_before_after_build_and_after_smoke": true,
+            "copied_runtime_files_compared": 108,
+            "copied_runtime_file_differences": [],
+            "scope": "Application, bootstrap, config, routes, resources, static public files, migrations, Docker/runtime files and root dependency/build inputs; generated public/build and bootstrap caches excluded."
+        },
+        "config_digest": "sha256:33392cc0a96f73429f2a1dbbe7c39937e15cb45bed3c0279257f27c6501b055a",
+        "image_id_check": "docker image inspect --format {{.Id}} webmail-production-review:local; this Docker containerd store returns the OCI manifest-list digest."
+    },
+    "production_smoke": {
+        "command": "rtk proxy python3 docker/runtime-smoke.py",
+        "exit_code": 0,
+        "result": "passed",
+        "database": "webmail_runtime_review in a separate volatile PostgreSQL 17 container",
+        "network": "Dedicated internal Docker bridge; direct inspected private-IP HTTP with proxies disabled; no public port",
+        "postgres_tls": {
+            "sslmode": "verify-full",
+            "pg_stat_ssl_ssl": true,
+            "wrong_hostname": "rejected",
+            "untrusted_ca": "rejected",
+            "certificate": "One-day disposable CA and server certificate; trust supplied only to the temporary app container",
+            "limitation": "This verifies local libpq TLS enforcement, not the actual Neon endpoint/certificate chain."
+        },
+        "http": {
+            "/up": 200,
+            "/login": 200,
+            "/.env": "403 or 404 required and observed",
+            "/composer.json": "403 or 404 required and observed",
+            "unexpected_host": 400,
+            "spoofed_forwarded_host": "ignored",
+            "cache_control": "no-store",
+            "content_security_policy": "self plus nonce script policy",
+            "session_cookie": "Secure and HttpOnly"
+        },
+        "rejected_startup_settings": [
+            "APP_DEBUG=true",
+            "DB_CONNECTION=sqlite",
+            "DB_SSLMODE=disable",
+            "MAIL_DOMAIN=postroom.test"
+        ],
+        "runtime": {
+            "uid": 33,
+            "phpunit_installed": false,
+            "app_writable": false,
+            "public_writable": false,
+            "node_binary": false,
+            "composer_binary": false,
+            "cpu_limit": 0.1,
+            "memory_limit_mib": 512,
+            "graceful_exit_code": 0,
+            "oom_killed": false
+        },
+        "initial_harness_failure": "Two initial health attempts used a host-published port on an internal Docker network. Docker returned null published-port mappings; Apache itself returned 200 internally and directly on its private IP. The harness was corrected to use that private IP. No production TLS/host/CSP guard was weakened.",
+        "cleanup": "Both temporary containers and the internal network were confirmed absent after success.",
+        "final_source_tested": true
+    },
+    "recovery_drill": {
+        "command": "rtk proxy sh docker/recovery-drill.sh /tmp/webmail-recovery-drill-20261101-final",
+        "exit_code": 0,
+        "result": "passed",
+        "source_database": "webmail_recovery_source",
+        "restored_database": "webmail_recovery_restored",
+        "source_and_restored_manifests_identical": true,
+        "checked_tables": {
+            "users": 1,
+            "mailboxes": 1,
+            "mailbox_user": 1,
+            "messages": 1,
+            "drafts": 1,
+            "send_intents": 1,
+            "quota_ledger": 1,
+            "ingress_receipts": 1,
+            "provider_events": 1,
+            "installation_state": 1
+        },
+        "raw_mime_sha256": "9482486c19c560d2f7dc9f4e9be77e9d7633bbfd5d0c4f873e89af6b0cd44945",
+        "raw_ciphertext_sha256": "23809804dd8c32f119a88a4d2e9534703f7738f766b1df1c1adbc6a549964d31",
+        "draft_sha256": "15cdef3bc180fa6af2979673ffd2340ac519257760fbc900a41884d80de3b053",
+        "draft_ciphertext_sha256": "0b957306bf4a37e386fa5af9e8c48222c7f3abd06f83431ef84b09fb7d21366a",
+        "draft_id": "9df91880-3c30-497d-a4f0-a9c0edb1ce01",
+        "draft_version": 7,
+        "send_intent_id": "9df91880-3c30-497d-a4f0-a9c0edb1ce02",
+        "send_intent_status": "uncertain",
+        "ingress_receipt_id": "recovery-ingress-1",
+        "provider_event_id": "recovery-event-1",
+        "owner_bootstrap_latch_preserved": true,
+        "wrong_app_key_rejected": true,
+        "dump_sha256": "7706981f18632cce1a0c223619507c6d3f83b9de2d4ec4c99278e0ca10022dd7",
+        "evidence_directory": "/tmp/webmail-recovery-drill-20261101-final",
+        "key_handling": "Fictional fixture APP_KEY is in a separate protected local file, not committed or included in this evidence.",
+        "cleanup": "Catalog query returned 0 matching disposable databases after the drill; main postroom database untouched.",
+        "limitations": [
+            "No live Neon backup",
+            "No D1 disaster-recovery drill",
+            "No real attachment fixture",
+            "No provider reconciliation",
+            "No external owner-storage transport or live outage cutover"
+        ]
+    },
+    "remaining_release_gates": [
+        "Actual Render/Neon Free account and billing limits",
+        "Neon endpoint TLS and canonical hosted HTTPS",
+        "Cold-start and production workload measurement",
+        "Owner MFA/recovery-code possession",
+        "External owner-held encrypted backups with separately retained APP_KEY",
+        "Real Cloudflare/D1/Resend verification and controlled mailbox test",
+        "DNS diff and explicit approval before any changes",
+        "Physical-device acceptance"
+    ],
+    "availability_caveat": "Render explicitly advises against using Free instances for production applications. The runtime is hardened and tested locally; the strict-free deployment remains a private pilot with sleep/quota/suspension limitations.",
+    "references": [
+        "https://laravel.com/framework/docs/13.x/deployment",
+        "https://render.com/docs/deploy-php-laravel-docker",
+        "https://render.com/docs/blueprint-spec",
+        "https://render.com/docs/free",
+        "https://render.com/docs/health-checks",
+        "https://www.postgresql.org/docs/current/libpq-envars.html",
+        "https://www.iana.org/assignments/special-use-domain-names"
+    ],
+    "php_suite_source_note": "Full PHP suites ran after the final Trash and HTML-table changes. The only subsequent production-source change was resources/js/components/postroom/compose.tsx; PHP suites were not repeated for that frontend-only change."
+}

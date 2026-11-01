@@ -1,0 +1,236 @@
+{
+    "recorded_at_utc": "2026-11-01T09:34:32.540652+00:00",
+    "product": "WebMail by Hookstack",
+    "scope": "Final local review; not a live deployment or production-readiness certification.",
+    "base_commit": "1b73af3d675d6e6bf3030e75d4b089321ebdbe35",
+    "working_tree_changes": true,
+    "php_suites": [
+        {
+            "database": "SQLite in-memory",
+            "command": "rtk php artisan test --compact",
+            "exit_code": 0,
+            "total": 217,
+            "passed": 201,
+            "skipped": 16,
+            "assertions": 1045,
+            "duration_seconds": 14.339
+        },
+        {
+            "database": "Dedicated local PostgreSQL postroom_test",
+            "preflight": "Verified APP_ENV=testing, database.default=pgsql and select current_database()=postroom_test before the suite.",
+            "command": "rtk proxy timeout 180 docker compose exec -T -e APP_ENV=testing -e DB_CONNECTION=pgsql -e DB_DATABASE=postroom_test -e DB_URL= app php artisan test --compact",
+            "exit_code": 0,
+            "total": 217,
+            "passed": 201,
+            "skipped": 16,
+            "assertions": 1045,
+            "duration_seconds": 12.62
+        }
+    ],
+    "browser_suites": [
+        {
+            "engine": "chromium",
+            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" npm run test:e2e -- --reporter=line",
+            "passed": 31,
+            "failed": 0,
+            "skipped": 0,
+            "exit_code": 0,
+            "duration_reported": "1.4m",
+            "provider_mode": "deterministic mock",
+            "database": "storage/e2e.sqlite",
+            "axe_violations_in_asserted_states": 0
+        },
+        {
+            "engine": "firefox",
+            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" POSTROOM_BROWSER=firefox npm run test:e2e -- --reporter=line",
+            "passed": 31,
+            "failed": 0,
+            "skipped": 0,
+            "exit_code": 0,
+            "duration_reported": "1.8m",
+            "provider_mode": "deterministic mock",
+            "database": "storage/e2e.sqlite",
+            "axe_violations_in_asserted_states": 0
+        },
+        {
+            "engine": "webkit",
+            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" POSTROOM_BROWSER=webkit POSTROOM_WEBKIT_EXECUTABLE=/tmp/postroom-webkit.sh npm run test:e2e -- --reporter=line",
+            "passed": 31,
+            "failed": 0,
+            "skipped": 0,
+            "exit_code": 0,
+            "duration_reported": "1.9m",
+            "provider_mode": "deterministic mock",
+            "database": "storage/e2e.sqlite",
+            "axe_violations_in_asserted_states": 0
+        }
+    ],
+    "browser_total_passed": 93,
+    "browser_versions": {
+        "playwright": "1.64.1",
+        "chromium": "156.0.8078.4",
+        "firefox": "157.0",
+        "webkit": "27.2"
+    },
+    "worker": {
+        "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" npm run test:worker",
+        "passed": 15,
+        "failed": 0,
+        "exit_code": 0,
+        "runtime": "Local Miniflare/D1, not Cloudflare deployment",
+        "maximum_mime_raw_bytes": 262144,
+        "accounted_bytes": 351576,
+        "maximum_mime_local_wall_time_ms": 93.5,
+        "cloudflare_free_cpu_verified": false
+    },
+    "static_checks": [
+        {
+            "command": "rtk proxy vendor/bin/pint --test",
+            "result": "passed"
+        },
+        {
+            "command": "rtk proxy vendor/bin/phpstan analyse --no-progress --debug",
+            "result": "passed; 0 errors"
+        },
+        {
+            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" npm run check",
+            "result": "passed; 129 formatted files, 77 linted files, 0 warnings/errors"
+        },
+        {
+            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" npm run types:check",
+            "result": "passed"
+        },
+        {
+            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" npm run types:worker",
+            "result": "passed"
+        },
+        {
+            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" npm run build",
+            "result": "passed; 2356 modules; 4.08 seconds"
+        }
+    ],
+    "dependency_audits": [
+        {
+            "command": "rtk proxy composer audit --format=json",
+            "advisories": 0,
+            "abandoned": 0,
+            "exit_code": 0
+        },
+        {
+            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" npm audit --json",
+            "vulnerabilities": 0,
+            "exit_code": 0
+        }
+    ],
+    "meaningful_red_green": [
+        {
+            "case": "Trash retained-draft quota accounting",
+            "before": "4 new cases failed",
+            "after": "11 focused tests, 99 assertions on both databases; all final PHP suites passed"
+        },
+        {
+            "case": "Cloudflare aggregate operation deadline",
+            "before": "4 new cases failed",
+            "after": "related provider tests and final full PHP suites passed"
+        },
+        {
+            "case": "enlarged row text and readable wide table cells",
+            "before": "2 Chromium assertions failed: line box below font size and 18.328125px cell",
+            "after": "all final browser suites pass; screenshots manually inspected"
+        },
+        {
+            "case": "saved indicator during layout remount and unfinished recipient retention",
+            "before": "2 deterministic Firefox cases failed",
+            "after": "both pass in all final complete browser suites"
+        },
+        {
+            "case": "nonzero scroll query Back test",
+            "before": "test inspected pre-search rows",
+            "correction": "wait for actual query URL, Search results heading and enabled row; settle scheduled restoration",
+            "after": "scroll >200px restored within2px; final suites pass"
+        }
+    ],
+    "production_runtime_evidence": "docs/review/production-runtime.json",
+    "production_source_manifest": "docs/review/production-source.json",
+    "preview_evidence": "docs/verification/webmail-preview-final.json",
+    "preview_migration_evidence": "docs/verification/webmail-preview-migration.json",
+    "postgresql_concurrency_and_http_auth_evidence": "docs/verification/webmail-backend-review.json",
+    "built_asset_manifest_sha256": "ea89c331172d385c8e5ea20ced41b65ff559f9adb4bc13afffce4f9da90a9ad1",
+    "manual_review": {
+        "guidance": "Reviewed/pinned Impeccable3.8.0; independent A/B review",
+        "gmail_reference": "Official public Google help and dated public UI animations, not an authenticated current Gmail account",
+        "reviewed_states": [
+            "desktop inbox",
+            "mobile inbox/reader",
+            "dark pane/composer",
+            "MFA/account settings",
+            "mobile mailbox administration/connections",
+            "200% CSS text",
+            "long recipients and horizontally scrollable protected newsletter"
+        ],
+        "physical_devices_tested": false,
+        "screen_readers_tested": false
+    },
+    "screenshots_sha256": {
+        "docs/review/final/chromium-appearance-320-text200.png": "73a4cfd90a5c0d4517c882e7e1ac999c663008361107368faf36848d6a8d28e5",
+        "docs/review/final/chromium-connections-390.png": "bccd4ee5d6d34ca02e33dce4fdcd4d91c65c509bfbbb3e95a7aa43e658d9175d",
+        "docs/review/final/chromium-inbox-1440.png": "b7e568e0144b9bee76631c53fd0e97858dc69cbfaa3a1cc89fe29cad4e234647",
+        "docs/review/final/chromium-inbox-320.png": "92a56d4a5a996fed27d9b3dbdb091093dc7b981c6835b0f9d3c5d816f8c507c0",
+        "docs/review/final/chromium-inbox-390.png": "8f5f54e73a490fc4624bc129a6e8ec717ee8399dc880092ce3f3075a4ee873f6",
+        "docs/review/final/chromium-inbox-768.png": "19d390198a04cd477cd9bf1b15a951f793d5d400aeaf03fdd8a9b3dc1fa4858f",
+        "docs/review/final/chromium-last-result-above-compose-390.png": "d690682b11c077ae296fd123194df4b5fdccdba69718a09e4e08eafa534806de",
+        "docs/review/final/chromium-long-recipient-details-320.png": "2d1be95646ade847f8a02196d6a69e823557c3ffbdd0a194ec3e7d0e157d6757",
+        "docs/review/final/chromium-mail-selection-text200-320.png": "540311274bc4f6c26e8a005c4cb96cd03f878c2fe4373c7ad2469c3e3d97f629",
+        "docs/review/final/chromium-mailbox-settings-390.png": "c30d74c5257945c808b4db623459e9b6fedfeed25983dd3c4d2253e128e4dfae",
+        "docs/review/final/chromium-reader-320.png": "4e65d9ae4a52deccf8e47fedc7e727324f2e1e3658468fe70a157be5d1fa3121",
+        "docs/review/final/chromium-scrolled-query-return.png": "ed47fd9c190f50d10f48505ed1da2fc9cac9c1d4104cfc08a9a61ed43e1f189c",
+        "docs/review/final/chromium-wide-newsletter-320.png": "8a078e9a0a92e878556550abd78d730f920ceb37d88a640ac0bc693edd87bab6",
+        "docs/review/final/firefox-appearance-320-text200.png": "b7fc2b8b92ce468e69a81164f9d13b242720768991bcc39e3349a8dd01755b3e",
+        "docs/review/final/firefox-connections-390.png": "26552d7f965c03c6d2d95c3b9b8e461de26c2358177300c925e043a07d22ce5e",
+        "docs/review/final/firefox-inbox-1440.png": "43de8dda0ef48351ca2adcaf15bdd7a480567ddf350838f1e18219aea729781c",
+        "docs/review/final/firefox-inbox-320.png": "ed42c2525f6ac4f87ef1e6473fb466699215b3d4e358d03949c72fcb2256eef2",
+        "docs/review/final/firefox-inbox-390.png": "fa88b0b06c958970abe0e685d7167d56c72fc315d96c491784ff4a3cf1becc66",
+        "docs/review/final/firefox-inbox-768.png": "97f588c51c80a382d5b3809a73560036a78d83ef678db2901065622b751b3535",
+        "docs/review/final/firefox-last-result-above-compose-390.png": "650eb9622a950a235ac9f4edeaefe6e9075c2029597d5847ee524ea89f6f0624",
+        "docs/review/final/firefox-long-recipient-details-320.png": "455de1555ed260b22c912379304d7fc7a299d8cb04849765682247fefcb3285b",
+        "docs/review/final/firefox-mail-selection-text200-320.png": "bd8d386f2bc706852a030ba296dcba8ae7d732189bd3eb8043498e42aa9f914c",
+        "docs/review/final/firefox-mailbox-settings-390.png": "bd31d645ae4a24d6a724a624e75ec7665f3b34e43fd7ab20f1031a8714f289cc",
+        "docs/review/final/firefox-reader-320.png": "a959e72718d4236b1cf8e67e2666eb0073eaeb4ad46554e81bafb7e0d6ec9dfc",
+        "docs/review/final/firefox-scrolled-query-return.png": "9cbc05c138eaf26f1630534f481f0756b978f15545cb9b9c18cfb6b3d0c8b194",
+        "docs/review/final/firefox-wide-newsletter-320.png": "19d574fc97fe0eff22ea74bedaaac7e8b706784d9ac19c8bb185376beaa30cce",
+        "docs/review/final/webkit-appearance-320-text200.png": "b10ff4089073d1a9b21bff43eef0be0de7f601cd1602019d74e425c9df05cf26",
+        "docs/review/final/webkit-connections-390.png": "234056273b3f20a42ff663bc71b1bc6d6b7990b9cf76953b146fc89510881ff3",
+        "docs/review/final/webkit-inbox-1440.png": "70284d7525b5863ddc34cf4992185b7ebae6b8701be84770f85e375abb2c0a65",
+        "docs/review/final/webkit-inbox-320.png": "752b1334508203a5cd0f7d4342b768144eddd63f5ed8746591329a7090199e42",
+        "docs/review/final/webkit-inbox-390.png": "b1362f8f783dc6eb00ada0d76506e3b0ea26a82793351cc3dd5aa6ef60f2a5bb",
+        "docs/review/final/webkit-inbox-768.png": "409f2c1118850b45d687eb440a90020078ce6833e7b084b4e227db3f2a7349d0",
+        "docs/review/final/webkit-last-result-above-compose-390.png": "38fd7f76722365a82b57bfa877ee2e0864d783ec913017d426543a5dfdcf0744",
+        "docs/review/final/webkit-long-recipient-details-320.png": "cd2ae74992c925c1348cb9767fece8381d859a8dbfb8a948df596fbed9813d13",
+        "docs/review/final/webkit-mail-selection-text200-320.png": "03fb60b0a74ab6d78a75459abebe700fbdc54f8b1f05293cbe348c1af97692a5",
+        "docs/review/final/webkit-mailbox-settings-390.png": "e5c2ef328e826131377b82828b86b71b27ea6d1336e97145dccf2ea7591837b0",
+        "docs/review/final/webkit-reader-320.png": "0476a01e0167c9ec37c8324e2d3b56a7ef449ecea70c51762a0b2dc3b70d7988",
+        "docs/review/final/webkit-scrolled-query-return.png": "bbaae3250129f38b2ef2fca37a3c8a42b2df1e0b7e7a41bdae8730f1e0a38743",
+        "docs/review/final/webkit-wide-newsletter-320.png": "8cfa62a45c5bc570dc4291a27013650c8a76b2bd26087c11ba22b5e5fcab7acd"
+    },
+    "limitations": [
+        "Live Cloudflare/Resend/Neon/Render unverified",
+        "No actual email delivery or DNS change",
+        "No paid/R2/overage/keep-alive activation",
+        "Domain/DNS/Worker/webhook provisioning wizard and incident lifecycle unfinished",
+        "No physical keyboard/installed-PWA/screen-reader certification",
+        "No blanket claim that every defect or security issue is eliminated"
+    ],
+    "production_image_id": "sha256:01312e5ca676fa94c90a8646b027d5266fa77a372754d038962300cc6b815852",
+    "production_source_sha256": "5094c76729694c38d7eb6346797dfbf723e8a2d670fd76c4f90c8ea0b1231bc9",
+    "production_source_files": 276,
+    "production_runtime_files_compared": 108,
+    "production_build_and_tls_smoke": "passed on final source; local disposable PostgreSQL/test CA, not live Neon or hosted deployment",
+    "ui_acceptance_cases": {
+        "total": 58,
+        "passed": 38,
+        "not_run_or_partial": 12,
+        "blocked": 8,
+        "report": "docs/UI_REPORT.md"
+    },
+    "source_manifest_matches_working_tree": true
+}

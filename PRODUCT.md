@@ -1,4 +1,4 @@
-# Postroom
+# WebMail by Hookstack
 
 ## Register
 
@@ -22,7 +22,7 @@ No generic card dashboards, Google logos/authentication imitation, decorative na
 
 ## Design Principles
 
-Follow the supplied DESIGN.md and MOBILE_UX.md. Preserve drafts and navigation. Use Gmail-familiar hierarchy with original Postroom identity. Expose limitations at the point of action.
+Follow the supplied DESIGN.md and MOBILE_UX.md. Preserve drafts and navigation. Use Gmail-familiar hierarchy with original WebMail identity. Expose limitations at the point of action.
 
 ## Accessibility & Inclusion
 

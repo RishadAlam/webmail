@@ -1,5 +1,14 @@
 # Changelog
 
+## WebMail review and implementation — November 1, 2026
+
+- Renames the displayed product to **WebMail by Hookstack**, preserving existing accounts, encrypted mail and compatible internal identifiers.
+- Unifies Gmail-familiar mail, mobile, authentication, MFA, account settings and administration; fixes theme contrast, search scope, selection/focus, draft navigation, enlarged text and protected wide-table rendering.
+- Adds bounded mailbox/alias/member/quota administration, encrypted owner connections, idempotent receiving-directory synchronization, original MIME export and explicit Trash deletion with retained replay/delivery evidence.
+- Fixes managed-identity/session security, MIME reply semantics, provider deadlines and draft-inclusive storage accounting.
+- Adds a hardened Free-compatible Docker runtime, secure startup checks, single-use owner bootstrap and a verified isolated PostgreSQL recovery drill.
+- Adds independent review, browser/axe/screenshots and SQLite/PostgreSQL/Worker regressions. Actual outcomes and unfinished release gates are in [STATUS.md](STATUS.md); no live deployment, provider verification or DNS changes are claimed.
+
 ## Revision 2 — November 1, 2026
 
 ### Design changes
