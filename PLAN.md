@@ -3,7 +3,7 @@
 **Planning date:** November 1, 2026  
 **Product name:** WebMail by Hookstack
 **Purpose:** A private, single-business webmail application with administrator-created users, Cloudflare inbound email, and Resend outbound email.  
-**Delivery status:** This package is a build specification, not implemented or tested application code.  
+**Delivery status:** This is the target specification. The implemented, tested local milestones and remaining release gates are tracked in [STATUS.md](STATUS.md); this document does not claim every target below is delivered.
 **Design revision:** 2 — Gmail-style desktop with a distinct app-like mobile experience. See `DESIGN.md`, `MOBILE_UX.md`, and `UI_ACCEPTANCE.md`. This revision changes the frontend specification; existing service/version facts must still be reverified before implementation.
 
 ## 1. Decision and boundaries
@@ -84,7 +84,7 @@ Provider sources: [S5, S7, S8, S9, S10, S11].
 - One business domain and five admin-created users initially. Neither is an invented provider mailbox restriction.
 - 25 MiB soft mailbox allocation per user; a 350 MiB organization mail-content budget.
 - 256 KiB maximum complete encoded MIME message, incoming and outgoing, including headers and all attachments. Show this limitation before composition and file selection. This is intentionally restrictive.
-- Attachments disabled initially; an admin can enable small allowlisted attachments only after parser/security tests pass, within the same whole-message cap. Never silently drop attachments from oversized mail.
+- Implemented November 1: bounded encrypted composer attachments (PDF/PNG/JPEG/GIF/TXT, at most 10 files and 128 KiB combined raw bytes) and authorized incoming attachment downloads, within the same 256 KiB encoded whole-message cap. Parser, authorization, concurrency, byte-integrity and browser regressions pass. Inline preview and a configurable administrator attachment policy are not implemented. Never silently drop attachments from oversized mail.
 - 50 MiB ingress-spool budget, including payloads and overhead reserve; additional space reserved for receipts/control records.
 - PostgreSQL write-admission warning at 600 MiB measured database size and a conservative stop at 750 MiB, or a lower account-specific verified threshold. Logical bytes and actual database footprint are different measurements.
 - Preserve capacity for security events, receipts, deletes, account recovery, and administrative actions. Admission limits must not consume the last writable space.

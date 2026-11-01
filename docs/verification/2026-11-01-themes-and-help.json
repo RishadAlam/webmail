@@ -1,0 +1,171 @@
+{
+    "date": "2026-11-01",
+    "scope": "Theme gallery, configuration help and logo-agent prompt follow-up",
+    "base_head": "c38826ab72431d57d94014065470dd74d1ec5e4f",
+    "environment": {
+        "host": "macOS 27.2 ARM64",
+        "php": "8.4.18",
+        "node": "22.23.4",
+        "playwright": "1.64.1",
+        "browsers": {
+            "chromium": "156.0.8078.4",
+            "firefox": "157.0",
+            "webkit": "27.2"
+        },
+        "database": "isolated SQLite storage/e2e.sqlite",
+        "providers": "mock only"
+    },
+    "checks": [
+        {
+            "command": "rtk proxy php artisan test --compact",
+            "result": "passed",
+            "passed": 300,
+            "skipped": 16,
+            "assertions": 2219,
+            "duration_ms": 6981
+        },
+        {
+            "command": "rtk proxy vendor/bin/pint --test app/Http/Controllers/HelpController.php app/Http/Controllers/Settings/MailSettingsController.php app/Http/Middleware/HandleAppearance.php app/Enums/MailPalette.php tests/Feature/ThemesAndHelpTest.php",
+            "result": "passed"
+        },
+        {
+            "command": "rtk proxy vendor/bin/phpstan analyse --debug --memory-limit=512M --no-progress",
+            "result": "passed",
+            "errors": 0
+        },
+        {
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; npm run check && npm run types:check && npm run test:frontend'",
+            "result": "passed",
+            "frontend_tests": 10
+        },
+        {
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; npm run test:e2e'",
+            "result": "passed",
+            "engine": "chromium",
+            "tests": 51,
+            "duration_display": "1.6m"
+        },
+        {
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; POSTROOM_BROWSER=webkit npm run test:e2e -- tests/e2e/workflows.spec.ts tests/e2e/review.spec.ts --grep \"themes:|help:|settings and Appearance|unfinished recipients\"'",
+            "result": "passed",
+            "engine": "webkit",
+            "tests": 5,
+            "duration_seconds": 16.5
+        },
+        {
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; MOZ_APP_DATA=/Users/rishadalam/Sites/webmail/storage/app/firefox-test-data/app-data MOZ_LOCAL_APP_DATA=/Users/rishadalam/Sites/webmail/storage/app/firefox-test-data/local-data POSTROOM_BROWSER=firefox npm run test:e2e -- tests/e2e/workflows.spec.ts tests/e2e/review.spec.ts --grep \"themes:|help:|settings and Appearance|unfinished recipients\"'",
+            "result": "passed",
+            "engine": "firefox",
+            "tests": 5,
+            "duration_seconds": 18.8
+        },
+        {
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; npm run test:e2e -- tests/e2e/workflows.spec.ts --grep \"themes: gallery persists\"'",
+            "result": "passed",
+            "engine": "chromium",
+            "tests": 1,
+            "duration_seconds": 4.6,
+            "reason": "Final rollback test action changed from check to click after fast WebKit rollback; application code unchanged."
+        },
+        {
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; npm run test:e2e -- tests/e2e/review.spec.ts --grep \"unfinished recipients\" --repeat-each=5'",
+            "result": "passed",
+            "tests": 5,
+            "duration_seconds": 7.6,
+            "reason": "Modal lifecycle wait fixes a responsive test race; original assertions retained."
+        },
+        {
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; ./node_modules/.bin/vp check --fix && npm run build && git diff --check'",
+            "result": "passed",
+            "lint_files": 91,
+            "lint_errors": 0,
+            "build_modules": 2366,
+            "build_seconds": 1.99
+        }
+    ],
+    "accessibility": {
+        "gallery": "All six palettes in Light and Dark: zero axe violations in each of Chromium, WebKit and Firefox.",
+        "help": "Signed-out setup guide: zero axe violations in all three engines.",
+        "responsive": "Gallery 320/390/1440 px, 200% CSS text at 320. Guide mobile contents/anchors and 320 px reflow. Emulation only."
+    },
+    "manual_review": [
+        "Local theme gallery and setup guide in in-app browser.",
+        "Ocean theme in fictional local inbox, restored to original WebMail/Light selection.",
+        "Saved desktop/mobile gallery and 320 guide screenshots."
+    ],
+    "intermediate_findings": [
+        "Fixed transient settings-navigation text contrast while changing modes.",
+        "Fixed duplicate guide-table region labels.",
+        "Moved routing activation after successful recipient synchronization.",
+        "Existing recipient-resize test raced a Radix remount; await actual modal lifecycle, no composer implementation change.",
+        "Fault-injected rollback can finish before Playwright check() asserts its final checked state; use click and assert restored selection/error."
+    ],
+    "review": "Independent read-only review confirmed routing-order and test-readiness corrections; no remaining scoped findings.",
+    "limitations": [
+        "No live provider send, DNS change, hosted deployment or production PostgreSQL run.",
+        "No physical device, assistive-technology or native-zoom certification.",
+        "Docker is unavailable on this Mac; updated production document copy rules reviewed but image not built.",
+        "Worker unchanged; earlier Worker test evidence was not rerun.",
+        "Logo prompt only; no generated or replaced artwork."
+    ],
+    "source_sha256": {
+        "app/Enums/MailPalette.php": "9e4214b7d2ad7ed8b662923a1a1ccf797841654e43ccbff34aa91f1859b93034",
+        "app/Http/Controllers/HelpController.php": "4cc0d36465ca89c5df56ffe3041032dd7f74df32251736755f471a7701001d21",
+        "app/Http/Controllers/Settings/MailSettingsController.php": "6c867d6716219c74d4fec9be8f7f6e355d5f158c7edee70afa8a088e31676665",
+        "app/Http/Middleware/HandleAppearance.php": "8e24e50bf9b779e0492110ac130187a9103eb3279d9648b35f9775900fb668e2",
+        "resources/views/app.blade.php": "9a7f23c485adc173518277e372b763b9dee61dc155c53eff30015a6eeb3f0ad1",
+        "resources/js/app.tsx": "0e5aaf8c013a6a2d3e13a727cdbfed14d877b022fce7295af1dea6cda32c30c5",
+        "resources/js/hooks/use-appearance.tsx": "e22c2934255fcd37c81ad3b9e1d1f2b34640013165f4b92a72bd93f0ba08d805",
+        "resources/js/lib/mail.ts": "a83f3bbd0f059f39bb56d1bdaa26d9d62d61d211d5a4557d5392a9bb5c5fcae7",
+        "resources/js/lib/mail-preferences.tsx": "83cb7cb306f9e99a409ad5c48c2d5f797cce46ff21f188d56ccfceb3f85a6802",
+        "resources/js/lib/mail-themes.ts": "6a3b53f085c3105144de834cd0d827d8e30bc39f7b8dbaa9b69b09a37ecd0018",
+        "resources/js/layouts/settings/layout.tsx": "a816b3c3e01165adac5b1375a4efcb0bbdf1ab06e170bd656be1bca0c297ac85",
+        "resources/js/pages/settings/appearance.tsx": "927b4dbac88be08c3a3331ab35e5d71b10520aab5d94fb70d68411b7e78167ec",
+        "resources/js/pages/settings/mail.tsx": "da4c8ca88dc916206d95f316a86862c6d8c3df05910b09758a6d9a3b0391963a",
+        "resources/js/pages/help/guide.tsx": "9e6227ce8c25f89b5df4231e90a70a08e1634cab9ddae8576ee8edbbd415ff01",
+        "resources/js/pages/mail.tsx": "74c888990230c0136faf72c302454a1d1b7b5c31f40ea1e28fe3dc3dd7938de7",
+        "resources/js/pages/auth/login.tsx": "5266f5afcdb73022eccd152423ac4cfa98c07df971ed35179c9690b754aa1f04",
+        "resources/js/components/postroom/admin-controls.tsx": "fdfe056346dcaedc4666140d24ecad4d04fdb33b209fd89dbfe5f92864a6afe6",
+        "resources/css/app.css": "d2fb7b46dc56e5137f4e69d663b60bea77073d36a4e6312f98e05581f16ee79e",
+        "resources/css/postroom.css": "7f63c0118bbb09d1b088b253572e575ab08de83fc2a4b179d0ed4e3a33f9848d",
+        "resources/css/themes.css": "675eff8f974ee92e3f2ac6d871ebf3fa7abca39cc532135183e8680dea163db7",
+        "resources/css/guide.css": "ed69ebdb421d5ef7cc97b002f722292628e48c4b387d00cd802d7ce166cf844b",
+        "routes/settings.php": "b27be4614d1d523a20eb894d7ab0a8120e568265a53a000f7656e49a6c18b403",
+        "routes/web.php": "38ade1826a3312ec469d45500f4c8d7f56d6b0920052ebfac137c455278ad540",
+        "Dockerfile": "d79a0fa07f7ae1e27e3c8d51c92fa6e6750cfd9f32f891d90872d1d9dea61d9f",
+        ".dockerignore": "948f7255970a085faee05982f0079ae47e61a758ac612010962165df030cd375",
+        "docs/CONFIGURATION.md": "678b13f879da6b1531658fd639321597136ea2095ecd27659f2e085da0ae35da",
+        "docs/DEPLOYMENT.md": "644a7ed56111cc0d31a6fc7de267368a2ab87bdc0b29a7ea5f17716919009939",
+        "docs/LOGO_PROMPT.md": "83dd9e9492d8073a0d4727aac38fa403b8bae27016d2e92f934eded99ef927c3",
+        "README.md": "21aabd59a9413271e94b7e9fae9d819a99f59d81755447c0b6ec52e33959d801",
+        "STATUS.md": "359c4086ea78fc35e31a583088d84eef6fb0424f4c7753c324b5b9793a5fcd16",
+        "SOURCES.md": "9606a7c6f654e81d36db949d7e42026d9ac90b6216f653020f043bee89899c63",
+        "docs/UI_REPORT.md": "b338bc9fe348ad01cb79f7f6916f96f8c0514e023c1979ba314433c3437cc46f",
+        "docs/GMAIL_SCREENSHOT_REVIEW.md": "445d2b7d3fd83e9a1648b8ccb3dc238411b6ad71ed0dd03d9869df0926f556ba",
+        "docs/superpowers/plans/2026-11-01-themes-and-setup.md": "ecabeb00821e13e85318887891dcb3018cb1e84c5d0acbd99f0563f80ca5dfce",
+        "tests/Feature/ThemesAndHelpTest.php": "819dd96c3d83cb5d795013385c69646347e3f81d6d2abe3cd93878364570ee81",
+        "tests/e2e/review.spec.ts": "c709120c41466d681e8f39a01cc99b6f6f90c93ee447b94f14dce19a90e7f487",
+        "tests/e2e/workflows.spec.ts": "03bd284a31e40ae0065a744d4d83a6f724319608928f147075cb7b2b540035a3",
+        "public/build/manifest.json": "2ba3af5b48d30ade5aff0aeb152bde63b58349ca12e9ee33dd0e6b27f07602b3"
+    },
+    "screenshot_sha256": {
+        "docs/ui-evidence/themes/chromium-gallery-1440.png": "3e3bc76ec9a57659d24ec83530ad4a63cb1369d6012bd5f364d7da9418faccd7",
+        "docs/ui-evidence/themes/chromium-gallery-320-text200.png": "336369e7eaaca45e3e376e4ae35ba3e97ef2ca0c718680040637054e6a36928d",
+        "docs/ui-evidence/themes/chromium-gallery-320.png": "3dde84fc39cab18749aa5107ce3435a2a0573b176b53622bc20d949995737044",
+        "docs/ui-evidence/themes/chromium-gallery-390.png": "fbb9780b4c2216570c619e328308727f905ffbb3876a4e9f4733835ce1a75cc3",
+        "docs/ui-evidence/themes/chromium-setup-1440.png": "92568d745acade867660eaba1f474964f0bc2ef31cf1c00e80262bfbe0c18618",
+        "docs/ui-evidence/themes/chromium-setup-320.png": "f32d9629584da1f863b69609a0dedf8439b92678b45fa064badc46c5aa966ff1",
+        "docs/ui-evidence/themes/firefox-gallery-1440.png": "5ecab508bd2aeb7175c719b768e356df654ac145a84905813861d2d0b2591961",
+        "docs/ui-evidence/themes/firefox-gallery-320-text200.png": "618e2cda4a6e0cf4171c8e7587ba607657d15a51ea778c28ade6335996adde29",
+        "docs/ui-evidence/themes/firefox-gallery-320.png": "4b029c69ce98c06c84d0c3ba1b8252174e76dbd5e49946ca45100f7ee3f7526e",
+        "docs/ui-evidence/themes/firefox-gallery-390.png": "75c15273d1f707dee8fda7bf8f9ac5ce705c7647dd7d8bf87f857b1c1272b462",
+        "docs/ui-evidence/themes/firefox-setup-1440.png": "2f3c992b692d1aafc07bda33ed86781884d503b58e95faf6e57d9c9285b19a21",
+        "docs/ui-evidence/themes/firefox-setup-320.png": "50e8a59fee6416f13f26f2f05c568d80c7101551c6d9141635b7fba2c1a2cb2d",
+        "docs/ui-evidence/themes/webkit-gallery-1440.png": "7f4076ae315ab23acf6aedb04dd27699d4cb6b8a9f2e913c9ccd06bf09e6dc6d",
+        "docs/ui-evidence/themes/webkit-gallery-320-text200.png": "a067ec4828c3978d13280b80d85452c4b0df9fd91bd6817ffd73b6d87d513077",
+        "docs/ui-evidence/themes/webkit-gallery-320.png": "a6477d37105f87064aaae82e24f2376efcd4795fd91017f623cfb779963f916b",
+        "docs/ui-evidence/themes/webkit-gallery-390.png": "768a68086ebe91c1500e3c66148522b83aa7af91a16a5e8d7f5b45f5cca2657e",
+        "docs/ui-evidence/themes/webkit-setup-1440.png": "86b8c27bb61f2f49d430a6762a47ef73380a3e086bb4ac5701af7e05d72c150b",
+        "docs/ui-evidence/themes/webkit-setup-320.png": "b60ba94d4386e710219d0bf4218749cb8deba264931b6acba49a6463224c4e65"
+    }
+}

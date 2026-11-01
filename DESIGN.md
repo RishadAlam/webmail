@@ -10,6 +10,8 @@ Use Gmail's familiar desktop and mobile mail workflows as the primary reference.
 
 The result should immediately feel familiar to a Gmail user, while clearly being **WebMail**, the business's independent mail service. Keep our name, original icon, domain, and authentication identity. Do not use Google's logo, a Google sign-in lookalike, proprietary artwork, extracted production code, or claims of Google affiliation. Use licensed open-source assets and original code.
 
+The approved identity is the connected W-and-envelope mark with the **WebMail** wordmark and **by Hookstack** endorsement. Use the shared `Brand` component for full lockups and `AppLogoIcon` for icon-only placements. Its color follows the current palette's accessible accent; browser/install icons keep white on WebMail blue. Keep the artwork's proportions, transparent counters, and clear space. [Brand assets and export instructions](docs/BRANDING.md) cover the raster source, variants and small-size limitations.
+
 This is a close Gmail-style mail experience, not a promise of pixel-identical replication across every Gmail account, experiment, or operating-system version. Review current public Google references before implementation and record the chosen reference state. Gmail documents alternative inbox layouts and optional reading panes; select a deliberate default rather than combining incompatible layouts. [S30, S31]
 
 Backend architecture, strict-free restrictions, provider policies, administration, and quota enforcement remain unchanged. Do not add paid services to imitate a visual feature.

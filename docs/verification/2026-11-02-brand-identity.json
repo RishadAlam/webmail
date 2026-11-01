@@ -1,0 +1,157 @@
+{
+    "date_local": "2026-11-02",
+    "timezone": "Asia/Dhaka",
+    "recorded_at_utc": "2026-11-01T18:12:24.976230+00:00",
+    "scope": "Approved connected W/envelope identity, theme-adaptive branding and versioned public icons",
+    "environment": {
+        "platform": "macOS ARM64",
+        "node": "22.23.4",
+        "php": "8.4.18",
+        "playwright": "1.64.1",
+        "database": "isolated storage/e2e.sqlite",
+        "data": "fictional local fixtures",
+        "providers": "mock only"
+    },
+    "checks": [
+        {
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; npm run brand:build'",
+            "result": "passed"
+        },
+        {
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; ./node_modules/.bin/vp check --fix'",
+            "result": "passed",
+            "lint_errors": 0,
+            "lint_warnings": 0
+        },
+        {
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; npm run types:check'",
+            "result": "passed"
+        },
+        {
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; npm run build'",
+            "result": "passed",
+            "modules": 2367,
+            "seconds": 1.98
+        },
+        {
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; vendor/bin/pint --test; php artisan view:cache'",
+            "result": "passed"
+        },
+        {
+            "command": "rtk proxy git diff --check",
+            "result": "passed"
+        },
+        {
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; POSTROOM_BROWSER=chromium npm run test:e2e -- tests/e2e/login.spec.ts tests/e2e/mail.spec.ts tests/e2e/workflows.spec.ts --grep \"login is accessible|failed autosave|themes: gallery persists|server outage\"'",
+            "result": "passed",
+            "tests": 4,
+            "seconds": 8.4,
+            "browser": "chromium"
+        },
+        {
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; POSTROOM_BROWSER=webkit npm run test:e2e -- tests/e2e/login.spec.ts tests/e2e/mail.spec.ts tests/e2e/workflows.spec.ts --grep \"login is accessible|failed autosave|themes: gallery persists|server outage\"'",
+            "result": "passed",
+            "tests": 4,
+            "seconds": 10.4,
+            "browser": "webkit"
+        },
+        {
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; MOZ_APP_DATA=/Users/rishadalam/Sites/webmail/storage/app/firefox-test-data/app-data MOZ_LOCAL_APP_DATA=/Users/rishadalam/Sites/webmail/storage/app/firefox-test-data/local-data POSTROOM_BROWSER=firefox npm run test:e2e -- tests/e2e/login.spec.ts tests/e2e/mail.spec.ts tests/e2e/workflows.spec.ts --grep \"login is accessible|failed autosave|themes: gallery persists|server outage\"'",
+            "result": "passed",
+            "tests": 4,
+            "seconds": 10.7,
+            "browser": "firefox"
+        }
+    ],
+    "asset_validation": {
+        "png_dimensions": "1024x544 mark, 180x180 Apple, 192x192 and 512x512 install, 512x512 maskable",
+        "ico_sizes": [16, 32, 48],
+        "maskable_all_pixels_opaque": true,
+        "maskable_bright_artwork_max_radius_px": 180.26,
+        "maskable_safe_radius_px": 204.8,
+        "method": "Executed Sharp metadata/raw-pixel and ICO directory assertions"
+    },
+    "manual_review": [
+        "1280px fictional inbox",
+        "390px navigation drawer",
+        "dark Ocean theme and six branded previews",
+        "setup guide",
+        "access-required page",
+        "public offline page",
+        "light/dark/narrow/enlarged login screenshots across all three engines"
+    ],
+    "cache_correction": "Manual review reproduced an older icon at the unversioned URL. The versioned SVG returned the current mark. The offline page, manifest and exact static-only cache now use versioned icon URLs; a stopped local proxy verifies the offline logo loads in all three engines. No skipWaiting or forced reload.",
+    "original_preview_theme_restored": true,
+    "not_claimed": [
+        "pixel-exact crop or genuine editable vector artwork",
+        "full PHP/Worker/browser suite rerun for this logo-only change",
+        "live-provider delivery or deployment",
+        "physical-device or OS-install verification"
+    ],
+    "source_sha256": {
+        "DESIGN.md": "ab2a72647c1cfc62db1bc96773e5939fdcffe6435d155fe58fd173137877de16",
+        "README.md": "7284c887621fd1617cff1339bef9df1e185d5d36efc2ed102806947ecdbac6ee",
+        "docs/BRANDING.md": "acd92406451ec3dcde80bdd3bae7cfa50181d1316c9c0560f52a2ba45a3dd006",
+        "docs/LOGO_PROMPT.md": "8931dbd6b8f739c7fdfd60356eea89af631f608db76ae8c773538c1ea059ae7b",
+        "package-lock.json": "10935ac5252abf0340d2623ad5a6b62c7fcd9a9d6fc2b0e6779baee1a3bbf747",
+        "package.json": "7851a740e70a4b531c35b100a518a16ef516e825991a4938a448f12d552a62f7",
+        "public/apple-touch-icon.png": "7cee8d77d8c5654581ca12f519eef5076afbfa07f707d016f1f0008c4ca07b66",
+        "public/brand/favicon-16.png": "d9151c36d8df70a17e93fa959c99d8217a37c4d340058586ffe1ea923e313e87",
+        "public/brand/favicon-32.png": "d6cfb5bb3510019a925a9832e3f7ce62ea066012ebfe1b36f76c12dc073b1d33",
+        "public/brand/favicon-48.png": "63782d823a3aa59f705989bfae1a3e6cc2db648209a0df280de52c6bd5cd2084",
+        "public/brand/webmail-logo-dark.png": "20a6356ce4edcd81a33f2a472adb7aa6316344c62973798cb78ca149eb0b6f7d",
+        "public/brand/webmail-logo-light.png": "3250c44acffdbf56fd3efe027252368ecfae2becf917a971d0495f4f97dae1b8",
+        "public/brand/webmail-logo-mono.png": "ebaa3271021d1fc81acfd448cd67e4b414559e4eb455fda161fbfb6231cf7694",
+        "public/brand/webmail-logo-white.png": "2ce9b2e9a462b03125d6dc2e17d923f04ea6ae7a748a610c037063421dcbfa75",
+        "public/brand/webmail-mark.png": "b9ca1011f2401a6dfb43468887b08528fc6796c7a686d9925691bf72c144840b",
+        "public/favicon.ico": "be02efbcc97376ee460908ab65acccaf152d6bb4d557ba8e1848f384e421c6b5",
+        "public/favicon.svg": "a772edb0302735ed260c9a1857bdd6675a8f1f248da7f38f024212a632aad0c8",
+        "public/icon-192.png": "19e5fdfa2383a14586d4334a8bb272aacb505b4e50c2e05d1e39062704a23861",
+        "public/icon-512.png": "d561f14bae15601f79dbd817e2b0d64a0c6002cc2e15ebd476bd5d41ccc74a95",
+        "public/icon-maskable-512.png": "3346a25612be683ab00e76bca168cf5cb0e325a49e1d57821f2fe9cba4ba4183",
+        "public/manifest.webmanifest": "b336c67a10e936621ce1865418f7b6396819b84bf4619bf21d70d9f8cf1184fb",
+        "public/offline.html": "3e7b1b6dd83a1a360f755731dff2b9a4cb85142431e12e5b361df12a9e49207e",
+        "public/sw.js": "92aec024c96d4aee6cea8731565591a3e32916e93570c92eb8482f773d406002",
+        "resources/brand/webmail-identity-reference.png": "e6d29084ca01c3bc03c3bae6025eb253a79b78201edd5997eb26f8d18ce2ca29",
+        "resources/brand/webmail-mark-master.png": "bb340c68d0d42b9f9c145ed34d474fa580cbc35255bfe55b091901a0f4a05247",
+        "resources/css/postroom.css": "91d0548bd6002968ed27cd871fd1c4721689923382a3a12f08c0e84b902ca9c9",
+        "resources/css/themes.css": "cd609c0eeddf17151795ad3262568f02c2b20985436ac86ee40094ce75904a83",
+        "resources/js/components/app-header.tsx": "efb440af228452db0aa5d4b453cac67dd587dedbf0c1292e5769a03f3839e0d7",
+        "resources/js/components/app-logo-icon.tsx": "d02e10f659f2c7d30bc1830976bf4c1ae18530077f1f6ddd122a055cf645041b",
+        "resources/js/components/postroom/ui.tsx": "b4db17333b7cfdf4b90d664e20e7e7e57364fd36832eead22e70ee7ff4c2f6ea",
+        "resources/js/layouts/auth/auth-card-layout.tsx": "e71f2b34642934edcde033644ca21d7d074bd730e77d7f07c301ea0b140d3ca3",
+        "resources/js/layouts/auth/auth-split-layout.tsx": "5a763125eb927deb05f8a0a79446867a0aff33b0ade69b8afc77d71a2b9c3344",
+        "resources/js/pages/mail.tsx": "b2b0355fc153dd2a1e82cb4f08f46cf2a79b9784353738e2b4f0e52c730964ac",
+        "resources/js/pages/settings/appearance.tsx": "715d26228e2de92843b569bb61e9eeec47ba1650d6136e58f51f03204a3113e8",
+        "resources/views/app.blade.php": "73d376a721a62136f6abc960aacce5347ee16630a55b522c9285d87b39d3617c",
+        "resources/views/errors/403.blade.php": "86a4ad2b00069ae30ce825a6a74d39f98c88a3061e5f6991e6e59c9d5f563211",
+        "scripts/build-brand-assets.mjs": "cd5053ff350cb864ac60a9526daafcd0a9165564fab0e48eb07adeecdc5b6bb1",
+        "tests/e2e/mail.spec.ts": "3cf7657d850657cad5da485cc203a21e6be2e8de182dbb9c2f70b1ef24f93449"
+    },
+    "evidence_sha256": {
+        "docs/ui-evidence/branding/chromium/login-dark.png": "96101a592d1ff08c8bc31934031554800e7d8c33da7b3dc9fb855d23d11bfde6",
+        "docs/ui-evidence/branding/chromium/login-desktop.png": "bdf0d4e6e0e7ec0ab66ebee62dc030a6cafe5f00a43dd82642b95ac6c3fd142f",
+        "docs/ui-evidence/branding/chromium/login-enlarged.png": "5992a8af6c3e534432c738ed762ba92d5bb1e128cdccb5ae825ced2f1a3806bb",
+        "docs/ui-evidence/branding/chromium/login-mobile.png": "2aa7167c2fffaa08df6418bf7368ac7825bfb7bce72fd585a99170cb0d5c2cfe",
+        "docs/ui-evidence/branding/chromium/login-narrow.png": "3b1d214423f03a88d17ad41b042f4f271f389a0d7e97d04f2878266cdec6b8e0",
+        "docs/ui-evidence/branding/chromium/offline.png": "f7535e862d9121776489912daa1d10c4e8b9b8cc647f6d5f8433e6e4914324b3",
+        "docs/ui-evidence/branding/firefox/login-dark.png": "c50a8df0031c2976485089394b98e8b005fdd1dbbd7ef8f66402491d193c06fd",
+        "docs/ui-evidence/branding/firefox/login-desktop.png": "7f13264bdec0fa38adce2ecde0221b718ad0f182e5891492958c4f42a582a0e3",
+        "docs/ui-evidence/branding/firefox/login-enlarged.png": "30d120ed3821815ec546de2cbec92094609a2fa246ea883ac0fc7222f7ccf43c",
+        "docs/ui-evidence/branding/firefox/login-mobile.png": "fa0e58bd032be7117046e0492fcf6eb28cb48abbd67f43a6521ef763b476018a",
+        "docs/ui-evidence/branding/firefox/login-narrow.png": "d5c7000c839fbbfd989bd0f1ba70fdf75b2a9ec66e365141243015c309e4e9ee",
+        "docs/ui-evidence/branding/firefox/offline.png": "9445f39e48d3cfaac0cd3e9f82edf38445da60c0a16b47b5774bbc7c414cd6dd",
+        "docs/ui-evidence/branding/manual/access-required.jpg": "2f6613860e596260bca23bcd0869a4a301c344e5fe586d1cb4ee37a09502a4e3",
+        "docs/ui-evidence/branding/manual/inbox-light.jpg": "27ff1d2f36703890d38032fea491c28510315d82b923519d1f2806d8be70b2fc",
+        "docs/ui-evidence/branding/manual/mobile-navigation.jpg": "967e59ed48257925d6cacfb2c97095f1271bd379021cb4dd87d2eee8ed67035c",
+        "docs/ui-evidence/branding/manual/offline.jpg": "7c75332db39344d318df5793d5eca67a129c0c3e5b550cf93abcf2afedd8f017",
+        "docs/ui-evidence/branding/manual/setup-guide.jpg": "2089ced3294f4b2971381f33d3675c5791220d72fb79e70ad4b0457ecbad88e5",
+        "docs/ui-evidence/branding/manual/themes-ocean-dark.jpg": "49e9000c421aea5352326425d0fa5a83611dd9f239c5b280c45fd3a9a6096118",
+        "docs/ui-evidence/branding/webkit/login-dark.png": "25e762db0ab41256c13385034b18c7bc939260e33cd8f38611f88ce2eac1110e",
+        "docs/ui-evidence/branding/webkit/login-desktop.png": "ff96bb10ad3e722dc562272ad29220a9ccb3e1be7ac13e997935ec3478eaaf7d",
+        "docs/ui-evidence/branding/webkit/login-enlarged.png": "12021b8ec952a5e60e963f4ec8831a09f8333aca85a665142b0444906e6d84ba",
+        "docs/ui-evidence/branding/webkit/login-mobile.png": "2cf3185a648beacfebcfe1b18e7589508e0597c9f435659b37b31493503772cc",
+        "docs/ui-evidence/branding/webkit/login-narrow.png": "5bac6a7103c4cd9b15e226452971f7aeb0aa1df23fb8e51b025499cd85c0e984",
+        "docs/ui-evidence/branding/webkit/offline.png": "cf823278971c246353b85becba718deb68b042d40532837bd5503826da06a34e"
+    }
+}

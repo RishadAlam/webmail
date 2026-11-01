@@ -1,8 +1,15 @@
 # WebMail by Hookstack — Open-source Laravel Webmail
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="public/brand/webmail-logo-dark.png">
+  <img src="public/brand/webmail-logo-light.png" width="360" height="96" alt="WebMail by Hookstack — connected W and envelope logo">
+</picture>
+
 **A private, self-hosted webmail application for small teams, built with Laravel 13, React, Inertia and PostgreSQL.** WebMail by Hookstack combines a Gmail-inspired desktop inbox with a distinct mobile interface, administrator-managed accounts, Cloudflare Email Routing for incoming mail and Resend for outgoing mail. Ordinary users do not need provider accounts.
 
 [Get started](#run-locally-with-docker-and-postgresql) · [Architecture](#architecture) · [Documentation](#documentation) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [MIT license](LICENSE)
+
+**New here? Read [Set up WebMail](docs/CONFIGURATION.md)** for local startup, personal themes, owner bootstrap, Cloudflare/Resend configuration, mailboxes, troubleshooting and backups. The same guide is available at `/help/setup` before sign-in and from Help, Settings and Connections. **Settings → Themes** includes six account-saved color palettes with independent Light, Dark and System modes.
 
 [![CI](https://github.com/RishadAlam/webmail/actions/workflows/ci.yml/badge.svg)](https://github.com/RishadAlam/webmail/actions/workflows/ci.yml)
 
@@ -12,7 +19,7 @@
 
 Desktop uses a full-width mailbox and conversation route with an optional reading pane. Phones use a drawer, full-screen search, reader and composer. Both layouts share authorized mailbox access and versioned server drafts. WebMail has its own branding and is not affiliated with Google or Gmail.
 
-![WebMail desktop inbox with search, folders, message labels and measured mailbox storage](docs/review/final/chromium-inbox-1440.png)
+![WebMail desktop inbox with the connected W-and-envelope identity, search, folders and message labels](docs/ui-evidence/branding/manual/inbox-light.jpg)
 
 <details>
 <summary>Mobile inbox and composer</summary>
@@ -34,7 +41,7 @@ These screenshots use fictional messages and browser-emulated viewports. They do
 - **Server-enforced access.** Administrator MFA, explicit mailbox permissions, permitted sender identities, encrypted credentials and bounded quota reservations.
 - **Strict-free safeguards.** No paid extensions, R2 activation, automatic overages or artificial keep-alives. Unknown usage remains unknown.
 
-Separate attachment handling, complete provider provisioning and the other [release gates](STATUS.md) remain unfinished. This is a pilot for evaluation and development, not a production availability promise.
+Bounded attachment upload/download, labels and incoming filters, snooze, contacts, signatures, templates and full mail preferences are implemented. Complete provider provisioning and the other [release gates](STATUS.md) remain unfinished. This is a pilot for evaluation and development, not a production availability promise.
 
 ## Architecture
 
@@ -103,6 +110,7 @@ npm run check
 npm run types:check
 npm run types:worker
 npm run test:worker
+npm run test:frontend
 npm run build
 npx playwright install chromium firefox webkit
 npm run test:e2e
@@ -110,7 +118,18 @@ POSTROOM_BROWSER=firefox npm run test:e2e
 POSTROOM_BROWSER=webkit npm run test:e2e
 ```
 
-Playwright owns only `storage/e2e.sqlite`, seeds fictional messages, starts port 8010, and applies a deliberately small two-recipient daily test cap. It does not reset the normal application database. The guarded acceptance seeder adds a separate mailbox with 78 messages for paging, long conversations and newsletter/detail checks; the original 17-message inbox remains intact. Browsers may require OS libraries (`npx playwright install-deps`); physical devices remain a separate gate. Traces and authentication state are ignored by source control. Screenshots in `docs/ui-evidence` and `docs/review/final` contain fictional data only. Do not rebuild shared frontend assets while browser tests are running.
+Playwright owns only `storage/e2e.sqlite`, seeds fictional messages, starts port 8010, and applies a deliberately small two-recipient daily test cap. It does not reset the normal application database. The guarded acceptance seeder adds a separate mailbox with 79 messages for paging, long conversations, newsletter/details and incoming attachment checks, plus a dedicated sign-in test identity; the original 17-message inbox remains intact. Browsers may require OS libraries (`npx playwright install-deps`); physical devices remain a separate gate. Traces and authentication state are ignored by source control. Screenshots in `docs/ui-evidence` and `docs/review/final` contain fictional data only. Do not rebuild shared frontend assets while browser tests are running.
+
+On macOS 27, the pinned Firefox 157 test binary can fail before loading a page with “Profile missing.” The verified local workaround gives the test process its own ignored application-data directories; it does not touch a personal Firefox profile:
+
+```sh
+mkdir -p storage/app/firefox-test-data/{app-data,local-data}
+MOZ_APP_DATA="$PWD/storage/app/firefox-test-data/app-data" \
+MOZ_LOCAL_APP_DATA="$PWD/storage/app/firefox-test-data/local-data" \
+POSTROOM_BROWSER=firefox npm run test:e2e
+```
+
+See the [upstream references](SOURCES.md#macos-browser-verification--november-1-2026) and [current verification report](docs/UI_REPORT.md). This is a test-launch workaround, not an application or browser security-policy change.
 
 For PostgreSQL checks, first create **dedicated disposable** databases `postroom_test`, `postroom_concurrency`, and `postroom_auth_e2e` in the local container. The concurrency and HTTP authentication scripts each enforce their own database name and testing environment:
 
@@ -127,11 +146,12 @@ docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_auth_e2e app p
 ## Implemented boundaries
 
 - Authentication without signup, owner/admin MFA session verification, server mailbox policies, no implicit administrator access to mail, original WebMail by Hookstack branding. Managed email identities cannot be self-edited; suspension/password changes invalidate other sessions and remembered logins. Self-service account deletion is disabled to preserve accepted mail.
-- Authorized all-mail metadata search, paginated conversations, Reply-To-aware reply/reply-all, forward drafts, star/read/archive/spam/trash/labels, version-checked Undo, shared autosaving composer, recipient validation, permitted From identities and saved preferences. Mark unread returns to the list without immediately undoing itself.
+- Authorized all-mail metadata search with labeled sender/recipient/subject/label/date fields, folder/category/unread/attachment controls and bounded `from:`, `to:`, `subject:`, `in:`, `is:`, `has:attachment`, `before:`, `after:` and `label:` operators. Existing terms survive reopening; submission is explicit and invalid queries remain editable. Paginated conversations, Reply-To-aware reply/reply-all, forward drafts, star/read/archive/spam/trash, manual importance, snooze, additive colored labels and version-checked Undo are integrated. Incoming filters match sender, recipient and subject; blocked senders move retained mail to Spam. Categories are assigned manually or by explicit rules, not inferred by AI.
+- One shared autosaving composer with permitted From identities, recipient suggestions from private contacts, encrypted plain-text signatures/templates, and preserved draft/recipient state across responsive layouts and navigation. Full mail settings synchronize with Quick settings and Appearance: three densities, right/below reading panes, page size, inbox order, default reply, snippets, hover actions, browser spellcheck, opt-in shortcuts, unread tab count and auto-advance.
 - User creation/suspension, session revocation, member password reset, bounded aliases/shared mailboxes/memberships/storage quotas and usage/delivery/audit views inside WebMail. New receiving addresses remain **pending directory synchronization** until an acknowledged versioned snapshot; deterministic local sync is labeled simulated.
 - Owner-only encrypted connection save/rotation/clear, masked state and bounded read-only access checks. Credential changes require current MFA and recent password confirmation; ordinary users need no provider accounts. Connection checks do not prove live delivery.
-- Transactional recipient reservations, immutable send intents, ambiguous outcomes kept separate from acceptance/delivery, recipient-level signed event processing, retained drafts on failure. Definite failures can be copied; uncertain sends cannot be blindly retried.
-- Bounded MIME persisted in D1 before acceptance; leased imports acknowledge only after database commit. Raw MIME is retained; active HTML is sanitized and sandboxed, remote images blocked. Authorized users can download the original `.eml`, including its retained attachments. Separate attachment upload/preview/download is disabled.
+- Transactional recipient reservations, immutable send intents, ambiguous outcomes kept separate from acceptance/delivery, recipient-level signed event processing, retained drafts on failure. Definite failures can be copied. Unattempted queued intents can resume using their original immutable payload, idempotency key and reservation; uncertain sends cannot be blindly retried.
+- Bounded MIME persisted in D1 before acceptance; leased imports acknowledge only after database commit. Raw MIME is retained; active HTML is sanitized and sandboxed, remote images blocked. Authorized users can download the original `.eml` and bounded individual incoming attachments. Composer uploads support PDF, PNG, JPEG, GIF and TXT, at most 10 files and 128 KiB combined raw bytes, within the 256 KiB encoded whole-message limit. Files are encrypted, authorized on every request, forced to download with safe response headers, and excluded from private caches. Inline attachment preview is not implemented. Complex or oversized MIME parsing fails safely while retaining the original.
 - Explicit permanent deletion of selected Trash mail requires typed confirmation. Import tombstones, send evidence and reservations survive deletion; storage accounting retains all saved and immutable reference drafts. No automatic purge of unimported accepted mail.
 - Public-static-only service-worker cache, public offline explanation and private history/session checks. No durable offline draft, push, background send or native keyboard claim.
 
@@ -139,9 +159,9 @@ The default application budgets are 5 people, 25 MiB per mailbox, 350 MiB logica
 
 ## Provider bootstrap and deployment
 
-The Worker is in `worker/`, with D1 schema, signature verification and local runtime tests. `worker/wrangler.jsonc` deliberately contains undeployed placeholders. Its scheduled wake occurs only for an actual pending backlog, with backoff; there are no keep-alive pings.
+The Worker is in `worker/`, with D1 schema, signature verification and local runtime tests. Existing D1 databases need `worker/migrations/0002_acknowledged_payload_retention.sql`; fresh databases use the current schema only. Acknowledged raw payloads are retained for a bounded 24-hour default recovery window (configurable 1–24 hours) and still count toward spool usage. Pending accepted mail is never expired. See [delivery recovery](docs/DELIVERY_RECOVERY.md) and [import recovery](docs/IMPORT_RECOVERY.md). `worker/wrangler.jsonc` deliberately contains undeployed placeholders. Its scheduled wake occurs only for an actual pending backlog, with backoff; there are no keep-alive pings.
 
-The current control plane supports in-app encrypted connections, bounded read-only Cloudflare zone/DNS inspection, versioned recipient-directory synchronization and routine supported mailbox administration. The complete resumable domain/DNS/routing/Worker/webhook provisioning wizard, role/ownership transfer and incident-reconciliation UI remain unfinished. No DNS mutation is implemented or silently attempted.
+The current control plane supports in-app encrypted connections, bounded read-only Cloudflare zone/DNS inspection, versioned recipient-directory synchronization and routine supported mailbox administration. Delivery now exposes redacted import incidents and a bounded, MFA-protected pending-import retry. The complete resumable domain/DNS/routing/Worker/webhook provisioning wizard, role/ownership transfer and broader provider-reconciliation UI remain unfinished. No DNS mutation is implemented or silently attempted.
 
 `Dockerfile` is the separate hardened PHP/Apache runtime; `render.yaml` declares a Free web service with automatic deploys off. See [deployment and recovery](docs/DEPLOYMENT.md), [recipient-directory protocol](docs/RECIPIENT_DIRECTORY.md) and [administration/retention](docs/ADMINISTRATION_AND_RETENTION.md). Local TLS/container and PostgreSQL restore drills have passed; they are not proof of Render/Neon deployment. Render expressly describes Free as unsuitable for production applications, so strict-free hosting remains a limited pilot without an availability guarantee.
 
@@ -153,16 +173,20 @@ Existing configuration keys, database names, protocol headers, source directorie
 
 ## Documentation
 
-| Guide                                                          | What it covers                                                      |
-| -------------------------------------------------------------- | ------------------------------------------------------------------- |
-| [Status and release gates](STATUS.md)                          | Executed checks, known gaps and next steps                          |
-| [Implementation plan](PLAN.md)                                 | Product scope and phased delivery                                   |
-| [Deployment and recovery](docs/DEPLOYMENT.md)                  | Runtime, owner bootstrap, strict-free limits and restore procedures |
-| [Mailbox administration](docs/ADMINISTRATION_AND_RETENTION.md) | Accounts, membership, quotas and permanent deletion                 |
-| [Recipient directory](docs/RECIPIENT_DIRECTORY.md)             | Worker synchronization protocol and failure handling                |
-| [Desktop design](DESIGN.md) / [mobile UX](MOBILE_UX.md)        | Layouts, interactions, accessibility and draft preservation         |
-| [UI acceptance evidence](docs/UI_REPORT.md)                    | Browser results, screenshots and untested device behavior           |
-| [Official sources](SOURCES.md)                                 | Verified provider documentation and pinned dependencies             |
+| Guide                                                            | What it covers                                                           |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [Set up WebMail](docs/CONFIGURATION.md)                          | Local startup, personal themes, provider connections and troubleshooting |
+| [Logo-agent prompt](docs/LOGO_PROMPT.md)                         | Original brand concepts and export requirements                          |
+| [Brand assets](docs/BRANDING.md)                                 | Approved logo, theme colors, icons and reproducible exports              |
+| [Status and release gates](STATUS.md)                            | Executed checks, known gaps and next steps                               |
+| [Implementation plan](PLAN.md)                                   | Product scope and phased delivery                                        |
+| [Deployment and recovery](docs/DEPLOYMENT.md)                    | Runtime, owner bootstrap, strict-free limits and restore procedures      |
+| [Mailbox administration](docs/ADMINISTRATION_AND_RETENTION.md)   | Accounts, membership, quotas and permanent deletion                      |
+| [Recipient directory](docs/RECIPIENT_DIRECTORY.md)               | Worker synchronization protocol and failure handling                     |
+| [Desktop design](DESIGN.md) / [mobile UX](MOBILE_UX.md)          | Layouts, interactions, accessibility and draft preservation              |
+| [UI acceptance evidence](docs/UI_REPORT.md)                      | Browser results, screenshots and untested device behavior                |
+| [Screenshot feature comparison](docs/GMAIL_SCREENSHOT_REVIEW.md) | Implemented Gmail-inspired workflows and explicit scope limits           |
+| [Official sources](SOURCES.md)                                   | Verified provider documentation and pinned dependencies                  |
 
 ## Contributing and support
 

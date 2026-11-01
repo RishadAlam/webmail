@@ -1,5 +1,7 @@
 # WebMail by Hookstack: deployment and recovery
 
+For the step-by-step first-time workflow, start with [Set up WebMail](CONFIGURATION.md). This runbook covers the hardened runtime and recovery commands. Its `rtk proxy` prefix is a development command wrapper; if RTK is not installed, run the command following that prefix directly.
+
 This repository now has a production PHP/Apache runtime. The strict-free hosting choice remains a limited private pilot: Render explicitly says, “Do not use them for production applications.” Idle sleep, suspension, quotas and cold starts prevent an availability guarantee. A successful local image build is not evidence of a live deployment or reliable business mail. No external service, DNS record or paid feature was changed during this work. [Render Free](https://render.com/docs/free)
 
 ## Runtime and free blueprint

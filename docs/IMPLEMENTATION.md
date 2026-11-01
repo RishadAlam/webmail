@@ -8,7 +8,7 @@ This is the historical Phase 0 plan. The later rename, review, administration an
 
 ## Constraints and scope
 
-Strict-free mode; no paid services, R2, overages, external DNS mutations or keep-alives. 256 KiB MIME, 25 MiB mailboxes, 350 MiB content and 50 MiB spool defaults. Attachments disabled. Phase 0 live-provider and physical-device gates remain explicitly pending without credentials/devices. Advanced control-plane provisioning, backup/restore and the full later-phase administrator lifecycle are tracked separately, never presented as implemented.
+Strict-free mode; no paid services, R2, overages, external DNS mutations or keep-alives. 256 KiB MIME, 25 MiB mailboxes, 350 MiB content and 50 MiB spool defaults. Attachments were disabled at this initial milestone; bounded upload/download is implemented in the subsequent [mail completion milestone](../STATUS.md). Phase 0 live-provider and physical-device gates remain explicitly pending without credentials/devices. Advanced control-plane provisioning, backup/restore and the full later-phase administrator lifecycle are tracked separately, never presented as implemented.
 
 ## Review focus
 
