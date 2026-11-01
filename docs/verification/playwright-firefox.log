@@ -1,0 +1,24 @@
+
+> test:e2e
+> playwright test
+
+
+Running 13 tests using 1 worker
+
+(node:259673) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [firefox] › tests/e2e/mail.spec.ts:56:1 › read, search, back, archive and server-backed Undo (1.8s)
+  ✓   2 [firefox] › tests/e2e/mail.spec.ts:86:1 › one server draft survives resizing, minimization and closing (3.0s)
+  ✓   3 [firefox] › tests/e2e/mail.spec.ts:123:1 › key screens are accessible and reflow at required widths (4.6s)
+  ✓   4 [firefox] › tests/e2e/mail.spec.ts:168:1 › failed autosave retains editor and private caches contain no mail (2.4s)
+  ✓   5 [firefox] › tests/e2e/mail.spec.ts:207:1 › settings persist, optional pane collapses, and dirty compose survives minimize (5.7s)
+  ✓   6 [firefox] › tests/e2e/mail.spec.ts:279:1 › mobile compose and search have Back-safe routes and direct draft resume (2.2s)
+  ✓   7 [firefox] › tests/e2e/mail.spec.ts:317:1 › swipe archive has explicit alternative and exact Undo (1.3s)
+  ✓   8 [firefox] › tests/e2e/mail.spec.ts:352:1 › keyboard, reduced motion, narrow composer and reader accessibility (3.2s)
+  ✓   9 [firefox] › tests/e2e/mail.spec.ts:387:1 › double tap Send creates one simulated intent and locks the editor (2.9s)
+  ✓  10 [firefox] › tests/e2e/mail.spec.ts:418:1 › quota rejection retains the saved draft and never reports Sent (1.5s)
+  ✓  11 [firefox] › tests/e2e/mail.spec.ts:450:1 › mobile owner can create and suspend a local account, usage is honest (4.3s)
+  ✓  12 [firefox] › tests/e2e/mail.spec.ts:517:1 › logout invalidates private history and account switching isolates mail (20.3s)
+  ✓  13 [firefox] › tests/e2e/mail.spec.ts:570:1 › server outage reload exposes only the public offline shell (1.2s)
+
+  13 passed (1.0m)

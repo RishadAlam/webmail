@@ -1,0 +1,5 @@
+> check
+> vp check
+
+pass: All 108 files are correctly formatted (1027ms, 16 threads)
+pass: Found no warnings or lint errors in 72 files (714ms, 16 threads)

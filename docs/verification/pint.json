@@ -1,0 +1,20 @@
+{
+    "tool": "pint",
+    "result": "fixed",
+    "files": [
+        {
+            "path": "app\/Providers\/FortifyServiceProvider.php",
+            "fixers": ["fully_qualified_strict_types", "ordered_imports"]
+        },
+        {
+            "path": "app\/Http\/Responses\/PrivateLoginResponse.php",
+            "fixers": [
+                "fully_qualified_strict_types",
+                "unary_operator_spaces",
+                "not_operator_with_successor_space",
+                "blank_line_before_statement",
+                "ordered_imports"
+            ]
+        }
+    ]
+}

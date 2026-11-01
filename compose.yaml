@@ -1,0 +1,38 @@
+name: postroom-local
+services:
+    postgres:
+        image: postgres:17@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
+        environment:
+            POSTGRES_DB: postroom
+            POSTGRES_USER: postroom
+            POSTGRES_PASSWORD: local-development-only
+        volumes:
+            - postroom-db:/var/lib/postgresql/data
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U postroom']
+            interval: 3s
+            timeout: 3s
+            retries: 20
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile.local
+        ports: ['127.0.0.1:8082:8000']
+        volumes: ['.:/app']
+        environment:
+            APP_ENV: local
+            APP_DEBUG: 'false'
+            APP_URL: http://localhost:8082
+            DB_CONNECTION: pgsql
+            DB_HOST: postgres
+            DB_PORT: '5432'
+            DB_DATABASE: postroom
+            DB_USERNAME: postroom
+            DB_PASSWORD: local-development-only
+            DB_URL: ''
+            POSTROOM_PROVIDER: mock
+        depends_on:
+            postgres:
+                condition: service_healthy
+volumes:
+    postroom-db:

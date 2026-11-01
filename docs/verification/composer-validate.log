@@ -1,0 +1,4 @@
+./composer.json is valid, but with a few warnings
+See https://getcomposer.org/doc/04-schema.md for details on the schema
+# General warnings
+- require.laravel/framework : exact version constraints (13.39.0) should be avoided if the package follows semantic versioning

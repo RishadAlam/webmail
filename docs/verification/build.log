@@ -1,0 +1,42 @@
+
+> build
+> vp build
+
+[plugin @laravel/vite-plugin-wayfinder] Types generated for actions, routes, form variants
+transforming...
+✓ 2356 modules transformed.
+rendering chunks...
+computing gzip size...
+public/build/manifest.json                              9.08 kB │ gzip:   1.19 kB
+public/build/assets/app-BD3GlqfB.css                  120.65 kB │ gzip:  21.73 kB
+public/build/assets/chevron-right-BfqJKiiS.js           0.12 kB │ gzip:   0.14 kB
+public/build/assets/arrow-right-BLG5V8uM.js             0.16 kB │ gzip:   0.16 kB
+public/build/assets/shield-check-CrBtye-P.js            0.31 kB │ gzip:   0.24 kB
+public/build/assets/refresh-cw-CGf1Vfvp.js              0.32 kB │ gzip:   0.22 kB
+public/build/assets/jsx-runtime-B8j0zEe4.js             0.60 kB │ gzip:   0.40 kB
+public/build/assets/dist-8IdGO3fu.js                    0.70 kB │ gzip:   0.48 kB
+public/build/assets/createLucideIcon-9ZkY8pDl.js        0.90 kB │ gzip:   0.54 kB
+public/build/assets/wayfinder-Bh70ToPC.js               1.12 kB │ gzip:   0.65 kB
+public/build/assets/input-C8EqhSBT.js                   1.26 kB │ gzip:   0.70 kB
+public/build/assets/appearance-HhjJSH6_.js              2.31 kB │ gzip:   1.11 kB
+public/build/assets/dashboard-Bpaop81A.js               2.58 kB │ gzip:   0.92 kB
+public/build/assets/login-BgLMOlgb.js                   2.66 kB │ gzip:   1.20 kB
+public/build/assets/label-D2ITzPxO.js                   2.73 kB │ gzip:   1.43 kB
+public/build/assets/two-factor-challenge-oNqh9FdS.js    2.80 kB │ gzip:   1.29 kB
+public/build/assets/dist-CD9mOmJ_.js                    3.14 kB │ gzip:   1.41 kB
+public/build/assets/dialog-CZ2rUgZL.js                  4.09 kB │ gzip:   1.28 kB
+public/build/assets/confirm-password-B82vLYml.js        4.15 kB │ gzip:   1.76 kB
+public/build/assets/profile-CkaPoYTP.js                 6.07 kB │ gzip:   2.00 kB
+public/build/assets/react-dom-Bs1mUpjc.js              12.33 kB │ gzip:   4.35 kB
+public/build/assets/react-BVy16SND.js                  14.35 kB │ gzip:   4.87 kB
+public/build/assets/admin-Df6ECzZd.js                  15.05 kB │ gzip:   5.02 kB
+public/build/assets/use-two-factor-auth-DfhxzIon.js    17.10 kB │ gzip:   6.17 kB
+public/build/assets/utils-DJPu_GY6.js                  27.62 kB │ gzip:   8.75 kB
+public/build/assets/security-DeeutU4O.js               30.82 kB │ gzip:   9.54 kB
+public/build/assets/mail-CDuSb0I0.js                   32.07 kB │ gzip:  10.91 kB
+public/build/assets/dist-Bz7djIHi.js                   35.72 kB │ gzip:  12.22 kB
+public/build/assets/app-Sf8YEsuo.js                    73.27 kB │ gzip:  22.96 kB
+public/build/assets/dist-CVRXV7Xx.js                  341.74 kB │ gzip: 106.45 kB
+public/build/assets/editor-hEVze52H.js                405.48 kB │ gzip: 129.02 kB
+
+✓ built in 3.50s

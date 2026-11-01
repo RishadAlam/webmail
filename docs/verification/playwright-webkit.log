@@ -1,0 +1,24 @@
+
+> test:e2e
+> playwright test
+
+
+Running 13 tests using 1 worker
+
+(node:268358) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [webkit] › tests/e2e/mail.spec.ts:58:1 › read, search, back, archive and server-backed Undo (1.9s)
+  ✓   2 [webkit] › tests/e2e/mail.spec.ts:88:1 › one server draft survives resizing, minimization and closing (2.8s)
+  ✓   3 [webkit] › tests/e2e/mail.spec.ts:125:1 › key screens are accessible and reflow at required widths (3.9s)
+  ✓   4 [webkit] › tests/e2e/mail.spec.ts:170:1 › failed autosave retains editor and private caches contain no mail (2.2s)
+  ✓   5 [webkit] › tests/e2e/mail.spec.ts:209:1 › settings persist, optional pane collapses, and dirty compose survives minimize (5.2s)
+  ✓   6 [webkit] › tests/e2e/mail.spec.ts:281:1 › mobile compose and search have Back-safe routes and direct draft resume (2.3s)
+  ✓   7 [webkit] › tests/e2e/mail.spec.ts:319:1 › swipe archive has explicit alternative and exact Undo (1.3s)
+  ✓   8 [webkit] › tests/e2e/mail.spec.ts:354:1 › keyboard, reduced motion, narrow composer and reader accessibility (3.1s)
+  ✓   9 [webkit] › tests/e2e/mail.spec.ts:389:1 › double tap Send creates one simulated intent and locks the editor (2.5s)
+  ✓  10 [webkit] › tests/e2e/mail.spec.ts:420:1 › quota rejection retains the saved draft and never reports Sent (1.6s)
+  ✓  11 [webkit] › tests/e2e/mail.spec.ts:452:1 › mobile owner can create and suspend a local account, usage is honest (4.3s)
+  ✓  12 [webkit] › tests/e2e/mail.spec.ts:519:1 › logout invalidates private history and account switching isolates mail (12.9s)
+  ✓  13 [webkit] › tests/e2e/mail.spec.ts:572:1 › server outage reload exposes only the public offline shell (1.2s)
+
+  13 passed (49.9s)

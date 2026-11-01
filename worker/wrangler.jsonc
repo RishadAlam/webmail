@@ -1,0 +1,15 @@
+{
+    "name": "postroom-ingress",
+    "main": "src/index.ts",
+    "compatibility_date": "2026-07-01",
+    "workers_dev": false,
+    "triggers": { "crons": ["*/15 * * * *"] },
+    "d1_databases": [
+        {
+            "binding": "DB",
+            "database_name": "postroom-ingress",
+            "database_id": "REPLACE_AFTER_APPROVED_BOOTSTRAP",
+        },
+    ],
+    "vars": { "APP_URL": "https://REPLACE_WITH_VERIFIED_APPLICATION_HOST" },
+}

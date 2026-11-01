@@ -1,0 +1,8 @@
+{
+    "database": "PostgreSQL",
+    "last_slot_competitors": 6,
+    "admitted": 1,
+    "repeat_requests": 6,
+    "provider_calls": 1,
+    "result": "passed"
+}

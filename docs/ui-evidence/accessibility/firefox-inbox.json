@@ -1,0 +1,9 @@
+{
+    "url": "http://127.0.0.1:8010/mail",
+    "timestamp": "2026-11-01T07:45:14.009Z",
+    "tool": {
+        "name": "axe-core",
+        "version": "4.14.0"
+    },
+    "violations": []
+}

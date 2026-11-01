@@ -1,0 +1,102 @@
+
+   PASS  Tests\Unit\ExampleTest
+  ✓ that true is true                                                    0.26s
+
+   PASS  Tests\Feature\Auth\AuthenticationTest
+  ✓ login screen can be rendered                                         0.04s
+  ✓ users can authenticate using the login screen                        0.24s
+  ✓ users with two factor enabled are redirected to two factor challeng… 0.22s
+  ✓ users can not authenticate with invalid password                     0.22s
+  ✓ users can logout                                                     0.02s
+  ✓ users are rate limited                                               0.02s
+
+   WARN  Tests\Feature\Auth\EmailVerificationTest
+  - email verification screen can be rendered → Fortify feature [email-verification] is not enabled.
+  - unverified users are redirected to the email verification prompt → Fortify feature [email-verification] is not enabled.
+  - email can be verified → Fortify feature [email-verification] is not enabled.
+  - email is not verified with invalid hash → Fortify feature [email-verification] is not enabled.
+  - email is not verified with invalid user id → Fortify feature [email-verification] is not enabled.
+  - verified user is redirected to dashboard from verification prompt → Fortify feature [email-verification] is not enabled.
+  - already verified user visiting verification link is redirected without firing event again → Fortify feature [email-verification] is not enabled.
+
+   PASS  Tests\Feature\Auth\PasswordConfirmationTest
+  ✓ confirm password screen can be rendered                              0.03s
+  ✓ password confirmation requires authentication                        0.02s
+
+   WARN  Tests\Feature\Auth\PasswordResetTest
+  - reset password link screen can be rendered → Fortify feature [reset-passwords] is not enabled.
+  - reset password link can be requested → Fortify feature [reset-passwords] is not enabled.
+  - reset password screen can be rendered → Fortify feature [reset-passwords] is not enabled.
+  - password can be reset with valid token → Fortify feature [reset-passwords] is not enabled.
+  - password cannot be reset with invalid token → Fortify feature [reset-passwords] is not enabled.
+
+   WARN  Tests\Feature\Auth\RegistrationTest
+  - registration screen can be rendered → Fortify feature [registration] is not enabled.
+  - new users can register → Fortify feature [registration] is not enabled.
+
+   PASS  Tests\Feature\Auth\TwoFactorChallengeTest
+  ✓ two factor challenge redirects to login when not authenticated       0.02s
+  ✓ two factor challenge can be rendered                                 0.22s
+
+   WARN  Tests\Feature\Auth\VerificationNotificationTest
+  - sends verification notification → Fortify feature [email-verification] is not enabled.
+  - does not send verification notification if email is verified → Fortify feature [email-verification] is not enabled.
+
+   PASS  Tests\Feature\DashboardTest
+  ✓ guests are redirected to the login page                              0.02s
+  ✓ authenticated users can visit the dashboard                          0.02s
+
+   PASS  Tests\Feature\DeliverySafetyTest
+  ✓ provider snapshot keeps older unresolved and newly accepted reserva… 0.03s
+  ✓ delivery is per recipient and transient bounce can recover           0.06s
+  ✓ early webhook wins over late http acceptance                         0.05s
+  ✓ definite failure can be copied but uncertainty cannot                0.05s
+  ✓ draft creation is bounded by storage and count                       0.03s
+  ✓ stale dispatch is uncertain and retains reservation                  0.05s
+  ✓ new admin created user can reach password confirmation and drafts a… 0.03s
+  ✓ admin requires an mfa verified session not only an enrolled secret   0.02s
+  ✓ physical storage guard preserves draft and does not dispatch         0.03s
+  ✓ suspension during usage fetch cannot send from a shared mailbox      0.03s
+  ✓ account switch login does not redirect to another users mailbox      0.23s
+
+   PASS  Tests\Feature\ExampleTest
+  ✓ root redirects to private login                                      0.02s
+
+   PASS  Tests\Feature\PostroomTest
+  ✓ public registration is absent                                        0.02s
+  ✓ mail is scoped even for administrators                               0.03s
+  ✓ drafts reject stale versions without losing content                  0.03s
+  ✓ sender is authorized and draft retained                              0.03s
+  ✓ double send creates one intent and only provider acceptance          0.04s
+  ✓ quota counts to cc bcc and preserves draft                           0.04s
+  ✓ timeout is uncertain and never blindly resent                        0.05s
+  ✓ archive undo restores state and rejects intervening changes          0.03s
+  ✓ import replay keeps raw mime and only acks committed data            0.05s
+  ✓ import storage failure does not acknowledge receipt                  0.03s
+  ✓ html reader blocks active content and remote images                  0.02s
+  ✓ member cannot admin and suspension revokes mail access               0.03s
+
+   PASS  Tests\Feature\ProviderTest
+  ✓ cloudflare inspection reads every page without mutating dns          0.03s
+  ✓ cloudflare inspection fails on provider error without leaking respo… 0.01s
+  ✓ resend uses documented endpoint and stable key and keeps acceptance… 0.01s
+  ✓ failed usage refresh keeps previous measurement stale and blocks ad… 0.02s
+  ✓ event replay and out of order delivery do not erase a bounce         0.03s
+  ✓ admin creates member without provider account and suspends sessions  0.03s
+
+   PASS  Tests\Feature\Settings\ProfileUpdateTest
+  ✓ profile page is displayed                                            0.02s
+  ✓ profile information can be updated                                   0.02s
+  ✓ email verification status is unchanged when the email address is un… 0.02s
+  ✓ user can delete their account                                        0.02s
+  ✓ correct password must be provided to delete account                  0.02s
+
+   PASS  Tests\Feature\Settings\SecurityTest
+  ✓ security page is displayed                                           0.02s
+  ✓ security page requires password confirmation when enabled            0.02s
+  ✓ security page renders without two factor when feature is disabled    0.02s
+  ✓ password can be updated                                              0.03s
+  ✓ correct password must be provided to update password                 0.02s
+
+  Tests:    16 skipped, 53 passed (211 assertions)
+  Duration: 3.05s

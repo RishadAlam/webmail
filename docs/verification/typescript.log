@@ -1,0 +1,7 @@
+
+> types:check
+> tsc --noEmit
+
+
+> types:worker
+> tsc -p worker/tsconfig.json --noEmit

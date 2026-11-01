@@ -1,0 +1,10 @@
+.git
+.env
+.env.*
+vendor
+node_modules
+public/build
+playwright-report
+test-results
+.wrangler
+storage/*.sqlite*
