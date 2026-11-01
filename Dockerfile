@@ -33,6 +33,7 @@ COPY --from=assets /app/bootstrap ./bootstrap
 COPY --from=assets /app/config ./config
 COPY --from=assets /app/routes ./routes
 COPY --from=assets /app/resources/views ./resources/views
+COPY --from=assets /app/docs/CONFIGURATION.md /app/docs/DEPLOYMENT.md /app/docs/DELIVERY_RECOVERY.md /app/docs/IMPORT_RECOVERY.md ./docs/
 COPY --from=assets /app/database/migrations ./database/migrations
 COPY --from=assets /app/public ./public
 COPY --from=assets /app/vendor ./vendor

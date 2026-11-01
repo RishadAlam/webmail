@@ -1,10 +1,10 @@
 /* Public assets only. Never store requests by URL pattern or navigation response. */
-const CACHE = 'webmail-public-v2';
+const CACHE = 'webmail-public-v4';
 const PUBLIC = [
     '/offline.html',
-    '/favicon.svg',
-    '/icon-192.png',
-    '/icon-512.png',
+    '/favicon.svg?v=3',
+    '/icon-192.png?v=3',
+    '/icon-512.png?v=3',
 ];
 self.addEventListener('install', (event) => {
     event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PUBLIC)));
@@ -31,7 +31,7 @@ self.addEventListener('fetch', (event) => {
     const request = event.request,
         url = new URL(request.url);
     if (request.method !== 'GET' || url.origin !== self.location.origin) return;
-    if (PUBLIC.includes(url.pathname) && !url.search) {
+    if (PUBLIC.includes(url.pathname + url.search)) {
         event.respondWith(
             caches
                 .open(CACHE)

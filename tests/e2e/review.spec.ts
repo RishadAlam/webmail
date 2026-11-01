@@ -219,14 +219,24 @@ test('review: unfinished recipients survive desktop mobile layout changes', asyn
     await page.getByRole('button', { name: 'Cc', exact: true }).click();
     await page.getByLabel('Cc', { exact: true }).fill('unfinished@');
     await page.setViewportSize({ width: 390, height: 844 });
+    // CSS switches first; wait for the dialog's modal lifecycle before editing.
+    await expect(page.locator('body')).toHaveCSS('pointer-events', 'none');
+    await expect(
+        page.getByRole('button', { name: 'Send message', exact: true }),
+    ).toBeVisible();
     await expect(page.getByLabel('Cc', { exact: true })).toHaveValue(
         'unfinished@',
     );
     await page.setViewportSize({ width: 1440, height: 960 });
+    await expect(page.locator('body')).toHaveCSS('pointer-events', 'auto');
+    await expect(
+        page.getByRole('button', { name: 'Minimize compose', exact: true }),
+    ).toBeVisible();
     await expect(page.getByLabel('Cc', { exact: true })).toHaveValue(
         'unfinished@',
     );
     await page.getByLabel('Cc', { exact: true }).fill('');
+    await expect(page.getByLabel('Cc', { exact: true })).toHaveValue('');
     await page
         .getByRole('button', { name: 'Save and close draft', exact: true })
         .click();

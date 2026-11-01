@@ -345,6 +345,100 @@ test('acceptance: the last mobile result can be opened above floating Compose', 
     await expect(page).toHaveURL(/\/thread\/acceptance-independent-45\?/);
 });
 
+test('acceptance: incoming attachments show metadata and download exact bytes at 390px', async ({
+    page,
+}, info) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const filename =
+        'fictional-acceptance-attachment-with-a-deliberately-long-filename-for-mobile-download-review.txt';
+    const expectedBytes = Buffer.from(
+        'Fictional incoming attachment.\r\nBytes stay intact: café.\r\n',
+        'latin1',
+    );
+    const metadataPromise = page.waitForResponse(
+        (response) =>
+            response.request().method() === 'GET' &&
+            /^\/messages\/\d+\/attachments$/.test(
+                new URL(response.url()).pathname,
+            ),
+    );
+    await page.goto(
+        `${mailboxURL}/thread/acceptance-incoming-attachment?folder=all`,
+    );
+    await expect(
+        page.getByRole('heading', {
+            name: 'Acceptance incoming attachment download',
+            exact: true,
+        }),
+    ).toBeVisible();
+    const metadataResponse = await metadataPromise;
+    expect(metadataResponse.ok()).toBe(true);
+    const metadata = (await metadataResponse.json()) as {
+        attachments: {
+            id: string;
+            name: string;
+            type: string;
+            size: number;
+            url: string;
+        }[];
+    };
+    expect(metadata.attachments).toEqual([
+        {
+            id: '0',
+            name: filename,
+            type: 'text/plain',
+            size: expectedBytes.length,
+            url: expect.stringMatching(/^\/messages\/\d+\/attachments\/0$/),
+        },
+    ]);
+    expect(metadataResponse.headers()['cache-control']).toContain('no-store');
+    const attachments = page.getByRole('region', {
+        name: 'Message attachments',
+        exact: true,
+    });
+    const link = attachments.getByRole('link', { name: filename, exact: true });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', metadata.attachments[0].url);
+    await expect(attachments.locator('.attachment-list small')).toHaveText(
+        '0.1 KiB',
+    );
+    await expectShellContained(page);
+    expect(
+        await attachments.evaluate(
+            (element) => element.scrollWidth <= element.clientWidth + 1,
+        ),
+    ).toBe(true);
+
+    // Download response headers are not exposed consistently by all browser
+    // engines. Check them through the same authenticated context as well as
+    // performing the real user-triggered browser download below.
+    const response = await page.request.get(metadata.attachments[0].url);
+    expect(response.ok()).toBe(true);
+    const headers = response.headers();
+    expect(headers['content-type']).toBe('application/octet-stream');
+    expect(headers['content-disposition']).toMatch(/^attachment;/);
+    expect(headers['content-disposition']).toContain(filename);
+    expect(headers['x-content-type-options']).toBe('nosniff');
+    expect(headers['cache-control']).toContain('no-store');
+    expect(headers['content-security-policy']).toContain('sandbox');
+    expect(await response.body()).toEqual(expectedBytes);
+
+    const downloadPromise = page.waitForEvent('download');
+    await link.click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe(filename);
+    expect(await download.failure()).toBeNull();
+    const stream = await download.createReadStream();
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+    expect(Buffer.concat(chunks)).toEqual(expectedBytes);
+    await expectShellContained(page);
+    await page.screenshot({
+        path: info.outputPath('incoming-attachment-download-390.png'),
+        fullPage: true,
+    });
+});
+
 test('acceptance: 200 percent text keeps mobile navigation and selection controls reachable', async ({
     page,
 }, info) => {

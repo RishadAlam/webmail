@@ -91,6 +91,8 @@ jobs:
         run: php artisan test --compact
       - name: Worker tests with local D1
         run: npm run test:worker
+      - name: Frontend state tests
+        run: npm run test:frontend
       - name: Dependency vulnerability checks
         run: |
           composer audit --locked --no-interaction

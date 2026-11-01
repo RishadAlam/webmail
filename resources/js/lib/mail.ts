@@ -17,6 +17,9 @@ export type Message = {
     body_text: string;
     is_read: boolean;
     starred: boolean;
+    important: boolean;
+    snoozed_until: string | null;
+    category: string;
     folder: string;
     labels: string[] | null;
     created_at: string;
@@ -36,14 +39,51 @@ export type Draft = {
     body: string;
     status: string;
     updated_at: string;
+    attachments: MailAttachment[];
+};
+export type MailAttachment = {
+    id: string;
+    name: string;
+    type: string;
+    size: number;
+    url: string;
 };
 export type Preferences = {
     theme: 'light' | 'dark' | 'system';
-    density: 'comfortable' | 'compact';
-    pane: 'none' | 'right';
+    palette:
+        | 'default'
+        | 'ocean'
+        | 'forest'
+        | 'terracotta'
+        | 'plum'
+        | 'graphite';
+    density: 'default' | 'comfortable' | 'compact';
+    pane: 'none' | 'right' | 'bottom';
     collapsed: boolean;
     swipe_left: 'archive' | 'read' | 'none';
     swipe_right: 'archive' | 'read' | 'none';
+    page_size: 10 | 30 | 50 | 100;
+    inbox_order: 'newest' | 'unread' | 'starred' | 'important';
+    default_reply: 'reply' | 'reply-all';
+    snippets: boolean;
+    hover_actions: boolean;
+    spellcheck: boolean;
+    keyboard_shortcuts: boolean;
+    unread_badge: boolean;
+    auto_advance: 'list' | 'next' | 'previous';
+};
+export type MailLabel = { id: number; name: string; color: string };
+export type Contact = { id: number; name: string; email: string };
+export type MailTemplate = {
+    id: number;
+    name: string;
+    subject: string;
+    body: string;
+};
+export type WritingTools = {
+    contacts: Contact[];
+    templates: MailTemplate[];
+    signature: { body: string };
 };
 export type MailProps = {
     mailbox: Mailbox | null;
@@ -62,7 +102,16 @@ export type MailProps = {
     drafts: Draft[];
     identities: string[];
     counts: Record<string, number>;
-    filters: { folder: string; q: string; unread: boolean; page: number };
+    labels: MailLabel[];
+    search_error?: string | null;
+    filters: {
+        folder: string;
+        q: string;
+        unread: boolean;
+        page: number;
+        label?: number | null;
+        category?: string | null;
+    };
     pagination: {
         from: number | null;
         to: number | null;
@@ -102,12 +151,19 @@ export async function api<T>(
             credentials: 'same-origin',
             headers: {
                 Accept: 'application/json',
-                'Content-Type': 'application/json',
+                ...(body instanceof FormData
+                    ? {}
+                    : { 'Content-Type': 'application/json' }),
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-XSRF-TOKEN': decodeURIComponent(token ?? ''),
             },
             ...(method !== 'GET' && method !== 'HEAD' && body !== undefined
-                ? { body: JSON.stringify(body) }
+                ? {
+                      body:
+                          body instanceof FormData
+                              ? body
+                              : JSON.stringify(body),
+                  }
                 : {}),
         });
     } catch {
@@ -126,9 +182,19 @@ export async function api<T>(
 }
 export const defaultPreferences: Preferences = {
     theme: 'light',
+    palette: 'default',
     density: 'comfortable',
     pane: 'none',
     collapsed: false,
     swipe_left: 'archive',
     swipe_right: 'read',
+    page_size: 30,
+    inbox_order: 'newest',
+    default_reply: 'reply',
+    snippets: true,
+    hover_actions: true,
+    spellcheck: true,
+    keyboard_shortcuts: false,
+    unread_badge: false,
+    auto_advance: 'list',
 };

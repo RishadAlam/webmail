@@ -5,12 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { cn, toUrl } from '@/lib/utils';
-import { edit as editAppearance } from '@/routes/appearance';
 import { edit } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
 import type { NavItem } from '@/types';
 
 const sidebarNavItems: NavItem[] = [
+    {
+        title: 'Mail',
+        href: '/settings/mail',
+        icon: null,
+    },
+    {
+        title: 'Labels & filters',
+        href: '/settings/organization',
+        icon: null,
+    },
     {
         title: 'Profile',
         href: edit(),
@@ -22,8 +31,8 @@ const sidebarNavItems: NavItem[] = [
         icon: null,
     },
     {
-        title: 'Appearance',
-        href: editAppearance(),
+        title: 'Themes',
+        href: '/settings/themes',
         icon: null,
     },
 ];
@@ -35,7 +44,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
         <div className="settings-layout py-6">
             <Heading
                 title="Settings"
-                description="Manage your profile and account settings"
+                description="Manage your mail, profile, and account settings"
             />
 
             <div className="flex min-w-0 flex-col lg:flex-row lg:gap-12">
@@ -66,12 +75,21 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                             </Button>
                         ))}
                     </nav>
+                    <a
+                        className="setup-guide-link"
+                        href="/help/setup"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Setup guide{' '}
+                        <span className="sr-only">(opens in a new tab)</span>
+                    </a>
                 </aside>
 
                 <Separator className="my-6 lg:hidden" />
 
-                <div className="min-w-0 flex-1 md:max-w-2xl">
-                    <section className="max-w-xl space-y-12">
+                <div className="min-w-0 flex-1">
+                    <section className="settings-content space-y-12">
                         {children}
                     </section>
                 </div>

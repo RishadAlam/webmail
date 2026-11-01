@@ -13,7 +13,11 @@ bootstrap/cache/*.php
 bootstrap/ssr
 public/hot
 tests
-docs
+docs/**
+!docs/CONFIGURATION.md
+!docs/DEPLOYMENT.md
+!docs/DELIVERY_RECOVERY.md
+!docs/IMPORT_RECOVERY.md
 .impeccable
 .agents
 .codex

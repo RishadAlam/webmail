@@ -16,6 +16,7 @@ void createInertiaApp({
         switch (true) {
             case name === 'auth/login':
             case name === 'welcome':
+            case name.startsWith('help/'):
                 return null;
             case name === 'mail' || name === 'admin':
                 return MailLayout;

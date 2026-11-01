@@ -2,26 +2,23 @@ import type { LucideIcon } from 'lucide-react';
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { useState, type HTMLAttributes } from 'react';
 import type { Appearance } from '@/hooks/use-appearance';
-import { useAppearance } from '@/hooks/use-appearance';
 import { cn } from '@/lib/utils';
-import { api } from '@/lib/mail';
+import { useMailPreferences } from '@/lib/mail-preferences';
 
 export default function AppearanceToggleTab({
     className = '',
     ...props
 }: HTMLAttributes<HTMLDivElement>) {
-    const { appearance, updateAppearance } = useAppearance();
+    const { preferences, updatePreferences } = useMailPreferences();
+    const appearance = preferences.theme;
     const [pending, setPending] = useState(false);
     const [error, setError] = useState('');
     const choose = async (value: Appearance) => {
-        const before = appearance;
         setPending(true);
         setError('');
-        updateAppearance(value);
         try {
-            await api('/preferences', 'PUT', { theme: value });
+            await updatePreferences({ theme: value });
         } catch (cause) {
-            updateAppearance(before);
             setError((cause as Error).message);
         } finally {
             setPending(false);

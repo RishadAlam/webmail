@@ -95,7 +95,14 @@ export function initializeTheme(): void {
         return;
     }
 
-    updateAppearance(getStoredAppearance());
+    const serverAppearance = document.documentElement.dataset.appearance;
+    updateAppearance(
+        serverAppearance === 'light' ||
+            serverAppearance === 'dark' ||
+            serverAppearance === 'system'
+            ? serverAppearance
+            : getStoredAppearance(),
+    );
 
     // Set up system theme change listener
     mediaQuery()?.addEventListener('change', handleSystemThemeChange);

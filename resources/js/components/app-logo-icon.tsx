@@ -1,29 +1,38 @@
-import type { SVGAttributes } from 'react';
+import { useId, type SVGAttributes } from 'react';
 
 export default function AppLogoIcon(props: SVGAttributes<SVGElement>) {
+    const maskId = `webmail-mark-${useId()}`;
+
     return (
         <svg
             {...props}
-            viewBox="0 0 40 40"
+            viewBox="0 0 1024 544"
             xmlns="http://www.w3.org/2000/svg"
             aria-hidden="true"
+            focusable="false"
         >
-            <rect x="1" y="1" width="38" height="38" rx="11" fill="#0b57d0" />
+            <defs>
+                <mask
+                    id={maskId}
+                    maskUnits="userSpaceOnUse"
+                    x="0"
+                    y="0"
+                    width="1024"
+                    height="544"
+                    style={{ maskType: 'alpha' }}
+                >
+                    <image
+                        href="/brand/webmail-mark.png"
+                        width="1024"
+                        height="544"
+                    />
+                </mask>
+            </defs>
             <rect
-                x="9"
-                y="12"
-                width="22"
-                height="17"
-                rx="2"
-                fill="none"
-                stroke="white"
-                strokeWidth="1.8"
-            />
-            <path
-                d="m10 14 10 7 10-7"
-                fill="none"
-                stroke="white"
-                strokeWidth="1.8"
+                width="1024"
+                height="544"
+                fill="currentColor"
+                mask={`url(#${maskId})`}
             />
         </svg>
     );

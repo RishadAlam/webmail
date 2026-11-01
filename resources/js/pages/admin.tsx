@@ -16,6 +16,10 @@ import { Brand, IconButton, Sheet } from '@/components/postroom/ui';
 import { api, initials } from '@/lib/mail';
 import { useMailNavigation } from '@/lib/mail-navigation';
 import {
+    ImportIncidents,
+    type ImportIncidentSummary,
+} from '@/components/postroom/admin-import-incidents';
+import {
     MailboxAdministration,
     PersonAccess,
     ProviderConnections,
@@ -60,6 +64,7 @@ type Props = {
         last_error: string | null;
         created_at: string;
     }[];
+    importIncidents: ImportIncidentSummary;
     audits: {
         id: number;
         action: string;
@@ -382,6 +387,8 @@ export default function Admin(props: Props) {
                     )}
                     {section === 'Delivery' && (
                         <>
+                            <ImportIncidents summary={props.importIncidents} />
+                            <h2>Outgoing delivery</h2>
                             <p className="section-intro">
                                 Provider acceptance and delivery to a recipient
                                 server are separate events.

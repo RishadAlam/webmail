@@ -18,16 +18,24 @@ import {
     Maximize2,
     Minimize2,
     Minus,
+    Paperclip,
     Send,
     Trash2,
     X,
 } from 'lucide-react';
-import { api, type Draft, type MailProps } from '@/lib/mail';
+import {
+    api,
+    byteText,
+    type Draft,
+    type MailProps,
+    type WritingTools,
+} from '@/lib/mail';
+import { useMailPreferences } from '@/lib/mail-preferences';
 import { IconButton, Sheet } from './ui';
 const Editor = lazy(() => import('./editor'));
 type Value = {
     open: (box: number, reply?: number, mode?: string) => Promise<void>;
-    resume: (draft: Draft) => void;
+    resume: (draft: Draft) => Promise<void>;
     draft: Draft | null;
     close: () => Promise<boolean>;
 };
@@ -89,6 +97,7 @@ function RecipientInput({
                     type="text"
                     inputMode="email"
                     autoComplete="off"
+                    list="compose-contact-options"
                     disabled={disabled}
                     onChange={(e) => {
                         onPending(e.target.value);
@@ -117,6 +126,7 @@ function RecipientInput({
     );
 }
 export function ComposeProvider({ children }: { children: ReactNode }) {
+    const { preferences } = useMailPreferences();
     const page = usePage(),
         props = page.props as unknown as MailProps;
     const userId = (page.props.auth as { user: { id: number } | null })?.user
@@ -134,6 +144,11 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
         [bcc, setBcc] = useState(false),
         [confirmDiscard, setConfirmDiscard] = useState(false),
         [sending, setSending] = useState(false),
+        [uploading, setUploading] = useState(false),
+        [attachmentUncertain, setAttachmentUncertain] = useState(false),
+        [writing, setWriting] = useState<WritingTools | null>(null),
+        [writingError, setWritingError] = useState(''),
+        [templateId, setTemplateId] = useState(''),
         [offline, setOffline] = useState(!navigator.onLine),
         [mobile, setMobile] = useState(
             matchMedia('(max-width: 767px)').matches,
@@ -149,6 +164,8 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
         mobileReturn = useRef<string | null>(null),
         loadingDraft = useRef<string | null>(null),
         returnFocus = useRef<HTMLElement | null>(null);
+    const attachmentBusy = useRef(false);
+    const fileInput = useRef<HTMLInputElement | null>(null);
     const listRoute = () => {
         const url = new URL(location.href);
         url.searchParams.delete('compose');
@@ -237,7 +254,12 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
         if (!Object.values(pendingRecipients.current).some(Boolean))
             timer.current = setTimeout(() => void save(), 650);
     };
-    const resume = (value: Draft) => {
+    const activateDraft = (value: Draft) => {
+        if (
+            (attachmentBusy.current || sending) &&
+            current.current?.id !== value.id
+        )
+            return;
         if (current.current?.id === value.id) {
             setMinimized(false);
             return;
@@ -266,6 +288,7 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
         setStatus('Saved to WebMail');
         setError('');
         setMinimized(false);
+        setAttachmentUncertain(false);
         setCc(value.cc.length > 0);
         setBcc(value.bcc.length > 0);
         if (
@@ -282,6 +305,29 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
             });
         }
     };
+    const resume = async (value: Draft) => {
+        if (busy.current) return;
+        if (current.current?.id === value.id) {
+            setMinimized(false);
+            return;
+        }
+        if (dirty()) {
+            setError(
+                'Save or close your current draft before opening another.',
+            );
+            return;
+        }
+        busy.current = true;
+        try {
+            // List rows are summaries. Load the current version and its files
+            // before allowing a user to edit or send the saved draft.
+            activateDraft(await api<Draft>(`/drafts/${value.id}`));
+        } catch (cause) {
+            setError((cause as Error).message);
+        } finally {
+            busy.current = false;
+        }
+    };
     const open = async (box: number, reply?: number, mode?: string) => {
         if (busy.current) return;
         if (current.current) {
@@ -290,7 +336,7 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
         }
         busy.current = true;
         try {
-            resume(
+            activateDraft(
                 await api<Draft>(`/mail/${box}/drafts`, 'POST', {
                     reply_to: reply,
                     mode,
@@ -303,7 +349,7 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
         }
     };
     const close = async (): Promise<boolean> => {
-        if (sending || !(await flush())) return false;
+        if (sending || attachmentBusy.current || !(await flush())) return false;
         if (!current.current) return true;
         mobileReturn.current = null;
         return new Promise((resolve) => {
@@ -332,19 +378,24 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
             );
         });
     };
-    const send = async () => {
-        if (busy.current || !current.current) return;
+    const send = async (resumeQueued = false) => {
+        if (busy.current || !current.current || attachmentUncertain) return;
         busy.current = true;
         setSending(true);
         setError('');
         try {
-            if (!(await flush())) return;
+            if (!resumeQueued && !(await flush())) return;
             const d = current.current!;
             const result = await api<{
                 status: string;
                 error: string | null;
                 simulated: boolean;
-            }>(`/drafts/${d.id}/send`, 'POST', { version: d.version });
+            }>(
+                `/drafts/${d.id}/${resumeQueued ? 'resume-send' : 'send'}`,
+                'POST',
+                { version: d.version },
+            );
+            if (current.current?.id !== d.id) return;
             const next = { ...d, status: result.status };
             current.current = next;
             setDraft(next);
@@ -373,6 +424,132 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
             setSending(false);
         }
     };
+    const mutateAttachment = async (file?: File, attachmentId?: string) => {
+        if (busy.current || !current.current) return;
+        busy.current = true;
+        attachmentBusy.current = true;
+        setUploading(true);
+        setError('');
+        let requestedDraft: string | null = null;
+        try {
+            if (!(await flush())) return;
+            const d = current.current!;
+            let result: Draft;
+            if (file) {
+                if ((d.attachments?.length ?? 0) >= 10)
+                    throw new Error(
+                        'You can attach up to 10 files. Remove a file first.',
+                    );
+                if (
+                    file.size +
+                        (d.attachments ?? []).reduce(
+                            (total, a) => total + a.size,
+                            0,
+                        ) >
+                    128 * 1024
+                )
+                    throw new Error(
+                        'Attachments must total 128 KiB or less. Choose a smaller file.',
+                    );
+                const data = new FormData();
+                data.append('file', file);
+                data.append('version', String(d.version));
+                setStatus('Uploading attachment…');
+                requestedDraft = d.id;
+                result = await api<Draft>(
+                    `/drafts/${d.id}/attachments`,
+                    'POST',
+                    data,
+                );
+            } else {
+                setStatus('Removing attachment…');
+                requestedDraft = d.id;
+                result = await api<Draft>(
+                    `/drafts/${d.id}/attachments/${attachmentId}`,
+                    'DELETE',
+                    { version: d.version },
+                );
+            }
+            if (current.current?.id === result.id) {
+                current.current = result;
+                saved.current = fields(result);
+                setDraft(result);
+                setAttachmentUncertain(false);
+                setStatus('Saved to WebMail');
+            }
+        } catch (e) {
+            setError((e as Error).message);
+            setStatus('Draft retained');
+            if (requestedDraft) {
+                // A write may commit before its response is lost. Editing is
+                // locked after flush, so reconcile its files and version.
+                try {
+                    const result = await api<Draft>(
+                        `/drafts/${requestedDraft}`,
+                    );
+                    if (current.current?.id === result.id) {
+                        current.current = result;
+                        saved.current = fields(result);
+                        setDraft(result);
+                        setAttachmentUncertain(false);
+                        setStatus('Saved files checked');
+                        setError(
+                            `${(e as Error).message} The saved file list is up to date; review it before retrying.`,
+                        );
+                    }
+                } catch {
+                    setAttachmentUncertain(true);
+                    setError(
+                        'The file change could not be confirmed. Reconnect and check saved files before editing or sending. Your draft is retained.',
+                    );
+                }
+            }
+        } finally {
+            busy.current = false;
+            attachmentBusy.current = false;
+            setUploading(false);
+            if (fileInput.current) fileInput.current.value = '';
+        }
+    };
+    const checkSavedFiles = async () => {
+        if (busy.current || !current.current) return;
+        busy.current = true;
+        setUploading(true);
+        try {
+            const result = await api<Draft>(`/drafts/${current.current.id}`);
+            if (current.current?.id !== result.id) return;
+            current.current = result;
+            saved.current = fields(result);
+            setDraft(result);
+            setAttachmentUncertain(false);
+            setError('');
+            setStatus('Saved to WebMail');
+        } catch (cause) {
+            setError((cause as Error).message);
+        } finally {
+            busy.current = false;
+            setUploading(false);
+        }
+    };
+    const insertTemplate = () => {
+        const template = writing?.templates.find(
+            (item) => String(item.id) === templateId,
+        );
+        if (!template || !current.current) return;
+        const escape = (value: string) =>
+            value
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        const body = `<p>${escape(template.body).replace(/\r?\n/g, '<br>')}</p>`;
+        change({
+            body: current.current.body + body,
+            subject: current.current.subject || template.subject,
+        });
+        setTemplateId('');
+    };
     useEffect(() => {
         document.documentElement.dataset.userId = String(userId ?? '');
         current.current = null;
@@ -382,10 +559,39 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
         pendingRecipients.current = {};
         setRecipientInputs({});
         setError('');
+        setWriting(null);
+        setWritingError('');
+        setTemplateId('');
+        setAttachmentUncertain(false);
     }, [userId]);
     useEffect(() => {
+        if (!draft?.id) return;
+        let active = true;
+        const load = () => {
+            void api<WritingTools>('/mail-writing')
+                .then((result) => {
+                    if (active) {
+                        setWriting(result);
+                        setWritingError('');
+                    }
+                })
+                .catch(() => {
+                    if (active)
+                        setWritingError(
+                            'Contacts and templates could not load. Reopen this draft to retry.',
+                        );
+                });
+        };
+        load();
+        window.addEventListener('mail-writing-updated', load);
+        return () => {
+            active = false;
+            window.removeEventListener('mail-writing-updated', load);
+        };
+    }, [draft?.id, userId]);
+    useEffect(() => {
         const unload = (e: BeforeUnloadEvent) => {
-            if (dirty()) {
+            if (dirty() || attachmentBusy.current) {
                 e.preventDefault();
                 e.returnValue = '';
             }
@@ -399,6 +605,10 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
         window.addEventListener('offline', off);
         window.addEventListener('online', on);
         const stop = router.on('before', (e) => {
+            if (attachmentBusy.current) {
+                e.preventDefault();
+                return;
+            }
             if (allowNavigation.current || !dirty()) return;
             const visit = e.detail.visit;
             if (visit.method !== 'get') return;
@@ -406,9 +616,14 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
             void save().then((ok) => {
                 if (ok && !dirty()) {
                     allowNavigation.current = true;
+                    const resumeOptions: Partial<typeof visit> = { ...visit };
+                    delete resumeOptions.id;
+                    delete resumeOptions.url;
+                    delete resumeOptions.completed;
+                    delete resumeOptions.cancelled;
+                    delete resumeOptions.interrupted;
                     router.visit(visit.url, {
-                        preserveState: true,
-                        preserveScroll: true,
+                        ...resumeOptions,
                         onFinish: () => {
                             allowNavigation.current = false;
                         },
@@ -457,7 +672,7 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
         ) {
             loadingDraft.current = id;
             void api<Draft>('/drafts/' + id)
-                .then(resume)
+                .then(activateDraft)
                 .catch((e) => setError(e.message))
                 .finally(() => {
                     loadingDraft.current = null;
@@ -470,7 +685,10 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
         }
     }, [page.url]);
     const locked =
-        sending || (draft && !['draft', 'held'].includes(draft.status));
+        sending ||
+        uploading ||
+        attachmentUncertain ||
+        (draft && !['draft', 'held'].includes(draft.status));
     return (
         <Context.Provider value={{ open, resume, draft, close }}>
             {children}
@@ -495,11 +713,16 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
                             onInteractOutside={(e) => e.preventDefault()}
                             onOpenAutoFocus={(e) => {
                                 e.preventDefault();
-                                requestAnimationFrame(() => {
-                                    document
-                                        .getElementById('recipient-To')
-                                        ?.focus();
-                                });
+                                const recipient =
+                                    document.getElementById('recipient-To');
+                                // Focus during opening, without a later frame
+                                // stealing a field the user already selected.
+                                if (
+                                    !recipient
+                                        ?.closest('.composer')
+                                        ?.contains(document.activeElement)
+                                )
+                                    recipient?.focus({ preventScroll: true });
                             }}
                             onCloseAutoFocus={(e) => {
                                 e.preventDefault();
@@ -569,6 +792,19 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
                                     hidden={minimized}
                                 >
                                     <div className="compose-fields">
+                                        <datalist id="compose-contact-options">
+                                            {writing?.contacts.map(
+                                                (contact) => (
+                                                    <option
+                                                        key={contact.id}
+                                                        value={contact.email}
+                                                    >
+                                                        {contact.name ||
+                                                            contact.email}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </datalist>
                                         <div className="from-line">
                                             <label htmlFor="from-identity">
                                                 From
@@ -684,8 +920,109 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
                                                 change({ body })
                                             }
                                             disabled={!!locked}
+                                            spellcheck={preferences.spellcheck}
                                         />
                                     </Suspense>
+                                    <div className="composer-tools">
+                                        <input
+                                            ref={fileInput}
+                                            className="sr-only"
+                                            type="file"
+                                            aria-label="Choose attachment"
+                                            aria-describedby="attachment-policy"
+                                            accept=".pdf,.png,.jpg,.jpeg,.gif,.txt"
+                                            disabled={!!locked}
+                                            onChange={(e) => {
+                                                const file =
+                                                    e.target.files?.[0];
+                                                if (file)
+                                                    void mutateAttachment(file);
+                                            }}
+                                        />
+                                        <button
+                                            className="secondary"
+                                            aria-describedby="attachment-policy"
+                                            disabled={!!locked}
+                                            onClick={() =>
+                                                fileInput.current?.click()
+                                            }
+                                        >
+                                            <Paperclip size={16} />
+                                            {uploading
+                                                ? 'Updating file…'
+                                                : 'Attach file'}
+                                        </button>
+                                        {!!writing?.templates.length && (
+                                            <>
+                                                <select
+                                                    aria-label="Message template"
+                                                    value={templateId}
+                                                    disabled={!!locked}
+                                                    onChange={(e) =>
+                                                        setTemplateId(
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                >
+                                                    <option value="">
+                                                        Choose template
+                                                    </option>
+                                                    {writing.templates.map(
+                                                        (template) => (
+                                                            <option
+                                                                key={
+                                                                    template.id
+                                                                }
+                                                                value={
+                                                                    template.id
+                                                                }
+                                                            >
+                                                                {template.name}
+                                                            </option>
+                                                        ),
+                                                    )}
+                                                </select>
+                                                <button
+                                                    className="secondary"
+                                                    disabled={
+                                                        !!locked || !templateId
+                                                    }
+                                                    onClick={insertTemplate}
+                                                >
+                                                    Insert
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                    {!!draft.attachments?.length && (
+                                        <ul
+                                            className="attachment-list"
+                                            aria-label="Draft attachments"
+                                        >
+                                            {draft.attachments.map((file) => (
+                                                <li key={file.id}>
+                                                    <Paperclip size={15} />
+                                                    <a href={file.url} download>
+                                                        {file.name}
+                                                    </a>
+                                                    <small>
+                                                        {byteText(file.size)}
+                                                    </small>
+                                                    <IconButton
+                                                        icon={X}
+                                                        label={`Remove attachment ${file.name}`}
+                                                        disabled={!!locked}
+                                                        onClick={() =>
+                                                            void mutateAttachment(
+                                                                undefined,
+                                                                file.id,
+                                                            )
+                                                        }
+                                                    />
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
                                     <div className="draft-feedback">
                                         <span
                                             className={
@@ -701,6 +1038,18 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
                                         {error && (
                                             <p role="alert">
                                                 {error}{' '}
+                                                {attachmentUncertain && (
+                                                    <button
+                                                        disabled={uploading}
+                                                        onClick={() =>
+                                                            void checkSavedFiles()
+                                                        }
+                                                    >
+                                                        {uploading
+                                                            ? 'Checking…'
+                                                            : 'Check saved files'}
+                                                    </button>
+                                                )}
                                                 {!locked && (
                                                     <button
                                                         onClick={() =>
@@ -719,8 +1068,22 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
                                                 it open.
                                             </p>
                                         )}
+                                        {writingError && (
+                                            <p role="status">{writingError}</p>
+                                        )}
                                     </div>
                                     <footer className="compose-footer">
+                                        {draft.status === 'queued' && (
+                                            <button
+                                                className="primary"
+                                                disabled={sending}
+                                                onClick={() => void send(true)}
+                                            >
+                                                {sending
+                                                    ? 'Checking send…'
+                                                    : 'Resume queued send'}
+                                            </button>
+                                        )}
                                         {draft.status === 'failed' && (
                                             <button
                                                 className="secondary"
@@ -750,8 +1113,15 @@ export function ComposeProvider({ children }: { children: ReactNode }) {
                                             <Send size={17} />
                                             {sending ? 'Sending…' : 'Send'}
                                         </button>
-                                        <span className="attachment-policy">
-                                            Attachments off · 256 KiB maximum
+                                        <span
+                                            className="attachment-policy"
+                                            id="attachment-policy"
+                                        >
+                                            PDF · PNG · JPEG · GIF · TXT
+                                            <br />
+                                            10 files · total ≤128 KiB
+                                            <br />
+                                            Message ≤256 KiB
                                         </span>
                                         {!locked && (
                                             <IconButton

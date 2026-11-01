@@ -42,6 +42,10 @@ test('read, search, back, archive and server-backed Undo', async ({ page }) => {
     await page
         .getByLabel('Search scope', { exact: true })
         .selectOption('inbox');
+    await page
+        .getByRole('dialog', { name: 'Search options', exact: true })
+        .getByRole('button', { name: 'Search', exact: true })
+        .click();
     await expect(
         page.getByRole('heading', { name: 'Search results', exact: true }),
     ).toBeVisible();
@@ -162,32 +166,36 @@ test('failed autosave retains editor and private caches contain no mail', async 
         route.request().method() === 'PUT' ? route.abort() : route.continue(),
     );
     await page.getByLabel('Subject', { exact: true }).fill('Do not lose this');
+    await expect(page.getByLabel('Subject', { exact: true })).toHaveValue(
+        'Do not lose this',
+    );
+    await expect(page.getByLabel('To', { exact: true })).toHaveValue('');
     await expect(page.getByText(/Draft not saved/)).toBeVisible();
     await page.getByRole('button', { name: 'Save and close draft' }).click();
     await expect(page.getByLabel('Subject', { exact: true })).toHaveValue(
         'Do not lose this',
     );
-    const urls = await page.evaluate(async () =>
-        (
+    const urls = await page.evaluate(async () => {
+        await navigator.serviceWorker.ready;
+        return (
             await Promise.all(
                 (await caches.keys()).map(async (key) =>
-                    (await (await caches.open(key)).keys()).map(
-                        (req) => new URL(req.url).pathname,
-                    ),
+                    (await (await caches.open(key)).keys()).map((req) => {
+                        const url = new URL(req.url);
+                        return url.pathname + url.search;
+                    }),
                 ),
             )
-        ).flat(),
-    );
-    expect(
-        urls.every((url) =>
-            [
-                '/offline.html',
-                '/favicon.svg',
-                '/icon-192.png',
-                '/icon-512.png',
-            ].includes(url),
-        ),
-    ).toBe(true);
+        )
+            .flat()
+            .sort();
+    });
+    expect(urls).toEqual([
+        '/favicon.svg?v=3',
+        '/icon-192.png?v=3',
+        '/icon-512.png?v=3',
+        '/offline.html',
+    ]);
 });
 
 test('settings persist, optional pane collapses, and dirty compose survives minimize', async ({
@@ -523,13 +531,20 @@ test('logout invalidates private history and account switching isolates mail', a
     await page.getByRole('button', { name: /Account and mailboxes/ }).click();
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await expect(page).toHaveURL(/login/);
-    await page.goBack();
+    // The private-history guard replaces the restored route with /login,
+    // which can cancel Chromium's pending Back navigation.
+    await page.goBack().catch((error: Error) => {
+        if (!error.message.includes('net::ERR_ABORTED')) throw error;
+    });
+    await expect(page).toHaveURL(/login/);
+    await expect(
+        page.getByRole('button', { name: 'Sign in', exact: true }),
+    ).toBeVisible();
     await expect(
         page.getByRole('heading', {
             name: 'A few thoughts on the new collection',
         }),
     ).not.toBeVisible();
-    await expect(page).toHaveURL(/login/);
     await page
         .getByLabel('Email address', { exact: true })
         .fill('owner@postroom.test');
@@ -612,8 +627,19 @@ test('server outage reload exposes only the public offline shell', async ({
         await expect(
             page.getByText('Mira Chen', { exact: true }),
         ).not.toBeVisible();
+        await expect(
+            page.getByRole('img', { name: 'WebMail by Hookstack' }),
+        ).toBeVisible();
+        await expect
+            .poll(() =>
+                page.locator('.brand img').evaluate((image) => {
+                    const icon = image as HTMLImageElement;
+                    return icon.complete && icon.naturalWidth > 0;
+                }),
+            )
+            .toBe(true);
         await page.screenshot({
-            path: `docs/ui-evidence/pwa/${test.info().project.name}-offline.png`,
+            path: test.info().outputPath('offline.png'),
         });
     } finally {
         proxy.closeAllConnections();

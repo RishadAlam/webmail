@@ -7,12 +7,15 @@ export default function Editor({
     value,
     onChange,
     disabled,
+    spellcheck = true,
 }: {
     value: string;
     onChange: (value: string) => void;
     disabled: boolean;
+    spellcheck?: boolean;
 }) {
     const editor = useEditor({
+        immediatelyRender: false,
         extensions: [StarterKit.configure({ link: { openOnClick: false } })],
         content: value,
         editable: !disabled,
@@ -22,13 +25,20 @@ export default function Editor({
                 'aria-label': 'Message body',
                 'aria-multiline': 'true',
                 class: 'mail-editor',
+                spellcheck: String(spellcheck),
             },
         },
         onUpdate: ({ editor }) => onChange(editor.getHTML()),
     });
     useEffect(() => {
-        editor?.setEditable(!disabled);
+        if (editor && !editor.isDestroyed) editor.setEditable(!disabled, false);
     }, [editor, disabled]);
+    useEffect(() => {
+        // React can retain a superseded editor until its next store update.
+        // A destroyed Tiptap instance no longer has a document schema.
+        if (editor && !editor.isDestroyed && editor.getHTML() !== value)
+            editor.commands.setContent(value, { emitUpdate: false });
+    }, [editor, value]);
     return (
         <>
             <div className="editor-scroll">

@@ -9,6 +9,11 @@ import {
     ChevronLeft,
     ChevronRight,
     Download,
+    Clock,
+    Flag,
+    Mails,
+    Paperclip,
+    Plus,
     CircleHelp,
     FilePenLine,
     Inbox,
@@ -34,24 +39,37 @@ import {
 import {
     api,
     byteText,
-    defaultPreferences,
     initials,
     type MailProps,
     type Message,
     type Preferences,
+    type MailLabel,
 } from '@/lib/mail';
 import { Brand, IconButton, Sheet } from '@/components/postroom/ui';
 import { useCompose } from '@/components/postroom/compose';
+import { MessageAttachments } from '@/components/postroom/attachments';
+import { SearchOptions } from '@/components/postroom/search-options';
 import { useMailNavigation } from '@/lib/mail-navigation';
-import { updateAppearance } from '@/hooks/use-appearance';
+import { useMailPreferences } from '@/lib/mail-preferences';
+import { mailThemes } from '@/lib/mail-themes';
 const folders = [
     ['inbox', 'Inbox', Inbox],
     ['starred', 'Starred', Star],
+    ['important', 'Important', Flag],
+    ['snoozed', 'Snoozed', Clock],
     ['sent', 'Sent', Send],
     ['drafts', 'Drafts', FilePenLine],
     ['archive', 'Archive', Archive],
+    ['all', 'All mail', Mails],
     ['spam', 'Spam', TriangleAlert],
     ['trash', 'Trash', Trash2],
+] as const;
+const categories = [
+    ['primary', 'Primary'],
+    ['promotions', 'Promotions'],
+    ['social', 'Social'],
+    ['updates', 'Updates'],
+    ['forums', 'Forums'],
 ] as const;
 const dates = (value: string) =>
     new Intl.DateTimeFormat(undefined, {
@@ -73,6 +91,7 @@ export default function MailPage(props: MailProps) {
     const page = usePage();
     const user = page.props.auth.user;
     const compose = useCompose();
+    const { preferences: prefs, updatePreferences } = useMailPreferences();
     const navigationState = useMailNavigation();
     const [drawer, setDrawer] = useState(false),
         [settings, setSettings] = useState(false),
@@ -83,6 +102,10 @@ export default function MailPage(props: MailProps) {
     const [purgeIds, setPurgeIds] = useState<number[]>([]);
     const [purgeConfirmation, setPurgeConfirmation] = useState('');
     const [purgeError, setPurgeError] = useState('');
+    const [snooze, setSnooze] = useState(false);
+    const [snoozeDate, setSnoozeDate] = useState('');
+    const [labelId, setLabelId] = useState('');
+    const [categoryTarget, setCategoryTarget] = useState('primary');
     useEffect(() => {
         const syncSearch = () =>
             setMobileSearch(
@@ -98,11 +121,7 @@ export default function MailPage(props: MailProps) {
     }, []);
     const [navigating, setNavigating] = useState(false);
     const [query, setQuery] = useState(filters.q ?? ''),
-        [selected, setSelected] = useState<number[]>([]),
-        [prefs, setPrefs] = useState<Preferences>({
-            ...defaultPreferences,
-            ...(user.preferences as Partial<Preferences>),
-        });
+        [selected, setSelected] = useState<number[]>([]);
     const [toast, setToast] = useState<{
             message: string;
             operation?: string;
@@ -111,7 +130,6 @@ export default function MailPage(props: MailProps) {
         [busy, setBusy] = useState(false),
         [more, setMore] = useState(false),
         [detail, setDetail] = useState<Message | null>(null),
-        [label, setLabel] = useState(''),
         [htmlView, setHtmlView] = useState<Record<number, boolean>>({});
     const scroll = useRef<HTMLDivElement>(null),
         listPosition = useRef(0),
@@ -126,6 +144,8 @@ export default function MailPage(props: MailProps) {
             folder: filters.folder ?? 'inbox',
             q: filters.q ?? '',
             unread: filters.unread ? '1' : '',
+            label: filters.label ?? '',
+            category: filters.category ?? '',
             page: filters.page ?? 1,
             ...updates,
         };
@@ -160,7 +180,15 @@ export default function MailPage(props: MailProps) {
         listPosition.current = 0;
         focusRow.current = null;
         if (scroll.current) scroll.current.scrollTop = 0;
-    }, [mailbox?.id, filters.folder, filters.q, filters.page, filters.unread]);
+    }, [
+        mailbox?.id,
+        filters.folder,
+        filters.q,
+        filters.page,
+        filters.unread,
+        filters.label,
+        filters.category,
+    ]);
     const restoredNavigation = useRef(false);
     useEffect(() => {
         if (restoredNavigation.current) return;
@@ -183,18 +211,19 @@ export default function MailPage(props: MailProps) {
         }
     }, [thread?.id, navigating]);
     const preference = async (patch: Partial<Preferences>) => {
-        const before = prefs;
-        setPrefs({ ...prefs, ...patch });
-        if (patch.theme) updateAppearance(patch.theme);
         try {
-            await api('/preferences', 'PUT', patch);
+            await updatePreferences(patch);
+            if (patch.inbox_order || patch.page_size)
+                visit(listUrl({ page: 1 }));
         } catch (e) {
-            setPrefs(before);
-            if (patch.theme) updateAppearance(before.theme);
             setToast({ message: (e as Error).message, error: true });
         }
     };
-    const mutate = async (action: string, ids = selected) => {
+    const mutate = async (
+        action: string,
+        ids = selected,
+        extra: Record<string, unknown> = {},
+    ) => {
         if (!mailbox || !ids.length || mutating.current) return;
         mutating.current = true;
         setBusy(true);
@@ -202,7 +231,7 @@ export default function MailPage(props: MailProps) {
             const result = await api<{ operation: string }>(
                 `${base}/actions`,
                 'POST',
-                { action, ids, label },
+                { action, ids, ...extra },
             );
             setToast({
                 message:
@@ -215,12 +244,40 @@ export default function MailPage(props: MailProps) {
             });
             setSelected([]);
             setMore(false);
+            setSnooze(false);
             if (
                 thread &&
-                ['archive', 'trash', 'spam', 'unread'].includes(action)
-            )
-                back();
-            else router.reload({ only: ['messages', 'thread', 'counts'] });
+                ['archive', 'trash', 'spam', 'unread', 'snooze'].includes(
+                    action,
+                )
+            ) {
+                const currentIndex = messages.findIndex(
+                    (message) => message.thread_id === thread.id,
+                );
+                const next =
+                    currentIndex < 0
+                        ? undefined
+                        : (prefs.auto_advance === 'previous'
+                              ? messages.slice(0, currentIndex).reverse()
+                              : messages.slice(currentIndex + 1)
+                          ).find((message) => message.thread_id !== thread.id);
+                if (
+                    prefs.auto_advance !== 'list' &&
+                    next &&
+                    next.thread_id !== thread.id
+                )
+                    openThread(next);
+                else back();
+            } else
+                router.reload({
+                    only: [
+                        'messages',
+                        'thread',
+                        'counts',
+                        'labels',
+                        'pagination',
+                    ],
+                });
         } catch (e) {
             setToast({ message: (e as Error).message, error: true });
         } finally {
@@ -234,7 +291,9 @@ export default function MailPage(props: MailProps) {
         try {
             await api(`/operations/${toast.operation}/undo`, 'POST');
             setToast({ message: 'Change undone' });
-            router.reload({ only: ['messages', 'thread', 'counts'] });
+            router.reload({
+                only: ['messages', 'thread', 'counts', 'pagination', 'labels'],
+            });
         } catch (e) {
             setToast({ message: (e as Error).message, error: true });
         } finally {
@@ -255,6 +314,8 @@ export default function MailPage(props: MailProps) {
             listUrl({
                 q: query,
                 folder: query.trim() ? 'all' : 'inbox',
+                label: '',
+                category: '',
                 page: 1,
             }),
         );
@@ -279,10 +340,12 @@ export default function MailPage(props: MailProps) {
                         href={`${base}?folder=${key}`}
                         preserveState
                         preserveScroll
-                        className={`nav-item ${filters.folder === key ? 'active' : ''}`}
+                        className={`nav-item ${filters.folder === key && !filters.label ? 'active' : ''}`}
                         onClick={() => setDrawer(false)}
                         aria-current={
-                            filters.folder === key ? 'page' : undefined
+                            filters.folder === key && !filters.label
+                                ? 'page'
+                                : undefined
                         }
                     >
                         <Icon
@@ -298,6 +361,43 @@ export default function MailPage(props: MailProps) {
                         )}
                     </Link>
                 ))}
+            </nav>
+            <div className="nav-label-heading">
+                <span>Labels</span>
+                <Link
+                    href={`/settings/organization/${mailbox?.id ?? ''}`}
+                    aria-label="Manage labels and filters"
+                    onClick={rememberMail}
+                >
+                    <Plus size={18} />
+                </Link>
+            </div>
+            <nav aria-label="Labels">
+                {(props.labels ?? []).map((item) => (
+                    <Link
+                        key={item.id}
+                        href={`${base}?folder=all&label=${item.id}`}
+                        preserveState
+                        preserveScroll
+                        onClick={() => setDrawer(false)}
+                        className={`nav-item ${filters.label === item.id ? 'active' : ''}`}
+                        aria-current={
+                            filters.label === item.id ? 'page' : undefined
+                        }
+                        title={item.name}
+                    >
+                        <Tag size={18} style={{ color: item.color }} />
+                        <span className="ellipsis">{item.name}</span>
+                    </Link>
+                ))}
+                <Link
+                    className="nav-item manage-labels"
+                    href={`/settings/organization/${mailbox?.id ?? ''}`}
+                    onClick={rememberMail}
+                >
+                    <SlidersHorizontal size={18} />
+                    <span>Labels & filters</span>
+                </Link>
             </nav>
             <div className="nav-separator" />
             <div className="nav-secondary">
@@ -368,6 +468,17 @@ export default function MailPage(props: MailProps) {
         </>
     );
     const actions = thread ? thread.messages.map((m) => m.id) : selected;
+    const actionMessages = thread
+        ? thread.messages
+        : messages.filter((message) => selected.includes(message.id));
+    const canSnooze =
+        actionMessages.length > 0 &&
+        actionMessages.every((message) =>
+            ['inbox', 'archive', 'snoozed'].includes(message.folder),
+        );
+    const canUnsnooze =
+        actionMessages.length > 0 &&
+        actionMessages.every((message) => message.folder === 'snoozed');
     const canPurge =
         actions.length > 0 &&
         (thread
@@ -379,14 +490,90 @@ export default function MailPage(props: MailProps) {
         setPurgeError('');
         setMore(false);
     };
+    useEffect(() => {
+        if (!prefs.keyboard_shortcuts) return;
+        const shortcut = (event: KeyboardEvent) => {
+            const target =
+                event.target instanceof HTMLElement ? event.target : null;
+            if (
+                event.isComposing ||
+                event.repeat ||
+                event.ctrlKey ||
+                event.metaKey ||
+                event.altKey ||
+                target?.closest(
+                    'input, textarea, select, [contenteditable="true"]',
+                ) ||
+                document.querySelector('[role="dialog"]')
+            )
+                return;
+            const focused = Number(
+                document.activeElement?.id.replace('open-', ''),
+            );
+            const index = messages.findIndex(
+                (message) => message.id === focused,
+            );
+            const currentMessage = messages[index];
+            if (event.key === 'c' && mailbox) {
+                event.preventDefault();
+                void compose.open(mailbox.id);
+            } else if (event.key === '/') {
+                event.preventDefault();
+                document
+                    .querySelector<HTMLInputElement>('.search-bar input')
+                    ?.focus();
+            } else if (event.key === '?') {
+                event.preventDefault();
+                setHelp(true);
+            } else if (!thread && (event.key === 'j' || event.key === 'k')) {
+                event.preventDefault();
+                const next =
+                    messages[
+                        Math.max(
+                            0,
+                            Math.min(
+                                messages.length - 1,
+                                index + (event.key === 'j' ? 1 : -1),
+                            ),
+                        )
+                    ];
+                if (next) document.getElementById(`open-${next.id}`)?.focus();
+            } else if (!thread && event.key === 'x' && currentMessage) {
+                event.preventDefault();
+                setSelected((previous) =>
+                    previous.includes(focused)
+                        ? previous.filter((id) => id !== focused)
+                        : [...previous, focused],
+                );
+            } else if (
+                event.key === 'e' &&
+                (actions.length || currentMessage)
+            ) {
+                event.preventDefault();
+                void mutate('archive', actions.length ? actions : [focused]);
+            } else if (event.key === 's' && currentMessage) {
+                event.preventDefault();
+                void mutate(currentMessage.starred ? 'unstar' : 'star', [
+                    focused,
+                ]);
+            }
+        };
+        window.addEventListener('keydown', shortcut);
+        return () => window.removeEventListener('keydown', shortcut);
+    });
     const list = (
         <div className="message-list" ref={scroll} {...{ 'scroll-region': '' }}>
             <div className="list-title">
                 <h1>
-                    {filters.q
-                        ? 'Search results'
-                        : (folders.find((f) => f[0] === filters.folder)?.[1] ??
-                          'All mail')}
+                    {filters.label
+                        ? (props.labels?.find(
+                              (item) => item.id === filters.label,
+                          )?.name ?? 'Label')
+                        : filters.q
+                          ? 'Search results'
+                          : (folders.find(
+                                (f) => f[0] === filters.folder,
+                            )?.[1] ?? 'All mail')}
                 </h1>
                 <span>
                     {filters.q
@@ -396,6 +583,42 @@ export default function MailPage(props: MailProps) {
                           : `${pagination?.total ?? drafts.length} messages`}
                 </span>
             </div>
+            {(props.search_error || page.props.errors.q) && (
+                <p className="mail-search-error" role="alert">
+                    {props.search_error || page.props.errors.q}
+                </p>
+            )}
+            {filters.folder === 'snoozed' && (
+                <p className="mail-view-note">
+                    Snoozed messages return to your inbox when you next open or
+                    refresh WebMail after the chosen time.
+                </p>
+            )}
+            {filters.folder === 'inbox' && !filters.q && !filters.label && (
+                <nav className="category-tabs" aria-label="Inbox categories">
+                    <button
+                        className={!filters.category ? 'active' : ''}
+                        aria-pressed={!filters.category}
+                        onClick={() =>
+                            visit(listUrl({ category: '', page: 1 }))
+                        }
+                    >
+                        All categories
+                    </button>
+                    {categories.map(([key, name]) => (
+                        <button
+                            key={key}
+                            className={filters.category === key ? 'active' : ''}
+                            aria-pressed={filters.category === key}
+                            onClick={() =>
+                                visit(listUrl({ category: key, page: 1 }))
+                            }
+                        >
+                            {name}
+                        </button>
+                    ))}
+                </nav>
+            )}
             {filters.folder === 'drafts' ? (
                 <div>
                     {drafts.length === 0 ? (
@@ -448,6 +671,7 @@ export default function MailPage(props: MailProps) {
                             selected={selected.includes(message.id)}
                             index={index}
                             preferences={prefs}
+                            labels={props.labels ?? []}
                             onSelect={() =>
                                 setSelected(
                                     selected.includes(message.id)
@@ -465,7 +689,7 @@ export default function MailPage(props: MailProps) {
                     ))}
                 </ul>
             )}
-            {pagination && pagination.total > 30 && (
+            {pagination && (pagination.next || pagination.prev) && (
                 <nav className="mobile-pagination" aria-label="Message pages">
                     <IconButton
                         icon={ChevronLeft}
@@ -597,13 +821,6 @@ export default function MailPage(props: MailProps) {
                                 message.delivery_status}
                         </div>
                     )}
-                    {message.has_attachments && (
-                        <p className="reader-notice">
-                            This message contains attachments. They are retained
-                            in the original MIME; attachment access is disabled
-                            in this pilot.
-                        </p>
-                    )}
                     {message.has_html && (
                         <div className="reader-notice">
                             Remote images and active content are blocked.
@@ -632,6 +849,9 @@ export default function MailPage(props: MailProps) {
                     ) : (
                         <div className="message-body">{message.body_text}</div>
                     )}
+                    {message.has_attachments && (
+                        <MessageAttachments messageId={message.id} />
+                    )}
                 </section>
             ))}
             <div className="reply-actions">
@@ -642,12 +862,18 @@ export default function MailPage(props: MailProps) {
                         void compose.open(
                             mailbox.id,
                             thread.messages.at(-1)?.id,
-                            'reply',
+                            prefs.default_reply,
                         )
                     }
                 >
-                    <Reply size={18} />
-                    Reply
+                    {prefs.default_reply === 'reply-all' ? (
+                        <ReplyAll size={18} />
+                    ) : (
+                        <Reply size={18} />
+                    )}
+                    {prefs.default_reply === 'reply-all'
+                        ? 'Reply all'
+                        : 'Reply'}
                 </button>
                 <button
                     className="secondary"
@@ -656,12 +882,20 @@ export default function MailPage(props: MailProps) {
                         void compose.open(
                             mailbox.id,
                             thread.messages.at(-1)?.id,
-                            'reply-all',
+                            prefs.default_reply === 'reply-all'
+                                ? 'reply'
+                                : 'reply-all',
                         )
                     }
                 >
-                    <ReplyAll size={18} />
-                    Reply all
+                    {prefs.default_reply === 'reply-all' ? (
+                        <Reply size={18} />
+                    ) : (
+                        <ReplyAll size={18} />
+                    )}
+                    {prefs.default_reply === 'reply-all'
+                        ? 'Reply'
+                        : 'Reply all'}
                 </button>
                 <button
                     className="secondary"
@@ -684,7 +918,9 @@ export default function MailPage(props: MailProps) {
         <div
             className={`mail-app ${prefs.collapsed ? 'nav-collapsed' : ''} density-${prefs.density} ${thread ? 'reading' : ''}`}
         >
-            <Head title={thread?.subject || filters.folder || 'Mail'} />
+            <Head
+                title={`${prefs.unread_badge && counts.unread ? `(${counts.unread}) ` : ''}${thread?.subject || filters.folder || 'Mail'}`}
+            />
             <a className="skip-link" href="#mail-main">
                 Skip to mail
             </a>
@@ -729,6 +965,7 @@ export default function MailPage(props: MailProps) {
                     </button>
                     <input
                         placeholder="Search mail"
+                        maxLength={200}
                         aria-label="Search mail"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
@@ -993,9 +1230,9 @@ export default function MailPage(props: MailProps) {
                     </div>
                 </div>
                 <div
-                    className={`mail-content ${prefs.pane === 'right' ? 'pane-enabled' : ''} ${thread ? 'has-thread' : ''}`}
+                    className={`mail-content ${prefs.pane !== 'none' ? 'pane-enabled' : ''} ${prefs.pane === 'bottom' ? 'pane-bottom' : ''} ${thread ? 'has-thread' : ''}`}
                 >
-                    {(!thread || prefs.pane === 'right') && list}
+                    {(!thread || prefs.pane !== 'none') && list}
                     {reader}
                 </div>
             </main>
@@ -1026,6 +1263,7 @@ export default function MailPage(props: MailProps) {
                 open={drawer}
                 onClose={() => setDrawer(false)}
                 title="WebMail"
+                branded
                 side="left"
             >
                 <div className="drawer-navigation">
@@ -1078,6 +1316,16 @@ export default function MailPage(props: MailProps) {
                 <p className="sheet-description">
                     Make a little room for the way you work.
                 </p>
+                <Link
+                    href="/settings/mail"
+                    className="secondary all-settings-link"
+                    onClick={() => {
+                        rememberMail();
+                        setSettings(false);
+                    }}
+                >
+                    See all settings <ArrowRight size={17} />
+                </Link>
                 <fieldset>
                     <legend>Appearance</legend>
                     <div className="theme-options">
@@ -1102,31 +1350,77 @@ export default function MailPage(props: MailProps) {
                     </div>
                 </fieldset>
                 <fieldset>
+                    <legend>Theme</legend>
+                    <div className="palette-swatches">
+                        {mailThemes.map(({ value, name }) => (
+                            <button
+                                key={value}
+                                type="button"
+                                className="palette-swatch"
+                                aria-label={`${name} theme`}
+                                title={name}
+                                aria-pressed={prefs.palette === value}
+                                onClick={() =>
+                                    void preference({ palette: value })
+                                }
+                            >
+                                <span
+                                    className="palette-preview"
+                                    data-palette={value}
+                                    aria-hidden="true"
+                                >
+                                    {prefs.palette === value && (
+                                        <Check size={17} />
+                                    )}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                    <Link
+                        href="/settings/themes"
+                        className="theme-gallery-link"
+                        onClick={() => {
+                            rememberMail();
+                            setSettings(false);
+                        }}
+                    >
+                        View all themes <ArrowRight size={16} />
+                    </Link>
+                </fieldset>
+                <fieldset>
                     <legend>Density</legend>
-                    {(['comfortable', 'compact'] as const).map((density) => (
-                        <label className="radio-row" key={density}>
-                            <input
-                                type="radio"
-                                name="density"
-                                checked={prefs.density === density}
-                                onChange={() => void preference({ density })}
-                            />
-                            <span>
-                                {density === 'comfortable'
-                                    ? 'Comfortable'
-                                    : 'Compact'}
-                                <small>
-                                    {density === 'comfortable'
-                                        ? 'A little more breathing room'
-                                        : 'More messages at a glance'}
-                                </small>
-                            </span>
-                        </label>
-                    ))}
+                    {(['default', 'comfortable', 'compact'] as const).map(
+                        (density) => (
+                            <label className="radio-row" key={density}>
+                                <input
+                                    type="radio"
+                                    name="density"
+                                    checked={prefs.density === density}
+                                    onChange={() =>
+                                        void preference({ density })
+                                    }
+                                />
+                                <span>
+                                    {density === 'default'
+                                        ? 'Default'
+                                        : density === 'comfortable'
+                                          ? 'Comfortable'
+                                          : 'Compact'}
+                                    <small>
+                                        {density === 'default'
+                                            ? 'More space for each message'
+                                            : density === 'comfortable'
+                                              ? 'A little more breathing room'
+                                              : 'More messages at a glance'}
+                                    </small>
+                                </span>
+                            </label>
+                        ),
+                    )}
                 </fieldset>
                 <fieldset>
                     <legend>Reading pane</legend>
-                    {(['none', 'right'] as const).map((pane) => (
+                    {(['none', 'right', 'bottom'] as const).map((pane) => (
                         <label className="radio-row" key={pane}>
                             <input
                                 type="radio"
@@ -1137,7 +1431,9 @@ export default function MailPage(props: MailProps) {
                             <span>
                                 {pane === 'none'
                                     ? 'No split'
-                                    : 'Right of inbox'}
+                                    : pane === 'right'
+                                      ? 'Right of inbox'
+                                      : 'Below inbox'}
                             </span>
                         </label>
                     ))}
@@ -1145,6 +1441,28 @@ export default function MailPage(props: MailProps) {
                         On smaller screens, conversations always open
                         full-screen.
                     </p>
+                </fieldset>
+                <fieldset>
+                    <legend>Inbox order</legend>
+                    <label className="stacked-label">
+                        Show first
+                        <select
+                            value={prefs.inbox_order}
+                            onChange={(event) =>
+                                void preference({
+                                    inbox_order: event.target
+                                        .value as Preferences['inbox_order'],
+                                })
+                            }
+                        >
+                            <option value="newest">Newest messages</option>
+                            <option value="unread">Unread messages</option>
+                            <option value="starred">Starred messages</option>
+                            <option value="important">
+                                Important messages
+                            </option>
+                        </select>
+                    </label>
                 </fieldset>
                 <fieldset>
                     <legend>Swipe actions</legend>
@@ -1205,6 +1523,9 @@ export default function MailPage(props: MailProps) {
                     </Link>
                 ))}
                 <div className="account-links">
+                    <Link href="/settings/mail" onClick={rememberMail}>
+                        Mail settings
+                    </Link>
                     <Link href="/settings/security" onClick={rememberMail}>
                         Password & two-factor authentication
                     </Link>
@@ -1240,58 +1561,71 @@ export default function MailPage(props: MailProps) {
             </Sheet>
             <Sheet
                 open={searchOptions}
-                onClose={() => setSearchOptions(false)}
+                onClose={() => {
+                    setSearchOptions(false);
+                    if (
+                        innerWidth < 768 &&
+                        new URLSearchParams(location.search).get('view') ===
+                            'search'
+                    )
+                        setMobileSearch(true);
+                }}
                 title="Search options"
                 side="bottom"
             >
-                <p>
-                    Search sender names, recipients, and subjects in this
-                    mailbox. New searches include all mail except Spam and
-                    Trash.
-                </p>
-                <div className="search-scope-field">
-                    <label htmlFor="search-scope">Search scope</label>
-                    <select
-                        id="search-scope"
-                        value={filters.folder}
-                        onChange={(event) => {
-                            visit(
-                                listUrl({
-                                    folder: event.target.value,
-                                    page: 1,
-                                }),
-                            );
-                            setSearchOptions(false);
-                        }}
-                    >
-                        <option value="all">
-                            All mail except Spam and Trash
-                        </option>
-                        {folders
-                            .filter(([key]) => key !== 'drafts')
-                            .map(([key, name]) => (
-                                <option key={key} value={key}>
-                                    {name}
-                                </option>
-                            ))}
-                    </select>
-                </div>
-                <label className="radio-row">
-                    <input
-                        type="checkbox"
-                        checked={filters.unread}
-                        onChange={(e) => {
-                            visit(
-                                listUrl({
-                                    unread: e.target.checked ? '1' : '',
-                                    page: 1,
-                                }),
-                            );
-                            setSearchOptions(false);
-                        }}
-                    />
-                    Unread only
-                </label>
+                <SearchOptions
+                    query={query}
+                    scope={query !== filters.q ? 'all' : filters.folder}
+                    unread={filters.unread}
+                    label={
+                        props.labels.find((label) => label.id === filters.label)
+                            ?.name ?? ''
+                    }
+                    category={filters.category ?? ''}
+                    labels={props.labels.map((label) => label.name)}
+                    onSearch={(text, fields, category) => {
+                        setQuery(text);
+                        setSearchOptions(false);
+                        setMobileSearch(false);
+                        visit(
+                            listUrl({
+                                q: text,
+                                folder: fields.scope,
+                                unread: fields.unread ? '1' : '',
+                                label: '',
+                                category,
+                                page: 1,
+                            }),
+                        );
+                    }}
+                />
+                <details className="search-syntax">
+                    <summary>Search syntax</summary>
+                    <p className="field-help">
+                        Combine sender, subject, date and message state.
+                        Searches stay within the current mailbox.
+                    </p>
+                    <dl className="search-examples">
+                        <dt>From a person</dt>
+                        <dd>
+                            <code>from:person@example.com</code>
+                        </dd>
+                        <dt>Unread attachments</dt>
+                        <dd>
+                            <code>is:unread has:attachment</code>
+                        </dd>
+                        <dt>A date range</dt>
+                        <dd>
+                            <code>after:2026-10-01 before:2026-11-01</code>
+                        </dd>
+                        <dt>A label or phrase</dt>
+                        <dd>
+                            <code>
+                                label:Projects subject:&quot;weekly notes&quot;
+                            </code>
+                        </dd>
+                    </dl>
+                </details>
             </Sheet>
             <Sheet
                 open={mobileSearch}
@@ -1319,6 +1653,7 @@ export default function MailPage(props: MailProps) {
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             placeholder="Search this mailbox"
+                            maxLength={200}
                         />
                     </label>
                     <button className="primary" type="submit">
@@ -1329,6 +1664,18 @@ export default function MailPage(props: MailProps) {
                 <p className="field-help">
                     Only mailboxes you belong to are searchable.
                 </p>
+                <button
+                    className="secondary"
+                    type="button"
+                    onClick={(event) => {
+                        event.currentTarget.focus({ preventScroll: true });
+                        setMobileSearch(false);
+                        setSearchOptions(true);
+                    }}
+                >
+                    <SlidersHorizontal size={18} />
+                    Search options
+                </button>
             </Sheet>
             <Sheet
                 open={more}
@@ -1359,6 +1706,33 @@ export default function MailPage(props: MailProps) {
                         <TriangleAlert size={19} />
                         Move to Spam
                     </button>
+                    <button onClick={() => void mutate('important', actions)}>
+                        <Flag size={19} />
+                        Mark important
+                    </button>
+                    <button onClick={() => void mutate('unimportant', actions)}>
+                        <Flag size={19} />
+                        Mark not important
+                    </button>
+                    {canSnooze && (
+                        <button
+                            onClick={() => {
+                                setMore(false);
+                                setSnooze(true);
+                            }}
+                        >
+                            <Clock size={19} />
+                            Snooze
+                        </button>
+                    )}
+                    {canUnsnooze && (
+                        <button
+                            onClick={() => void mutate('unsnooze', actions)}
+                        >
+                            <Inbox size={19} />
+                            Return snoozed to Inbox
+                        </button>
+                    )}
                     {canPurge && (
                         <button className="error-text" onClick={confirmPurge}>
                             <Trash2 size={19} />
@@ -1367,21 +1741,152 @@ export default function MailPage(props: MailProps) {
                     )}
                     <label>
                         Label
-                        <input
-                            value={label}
-                            onChange={(e) => setLabel(e.target.value)}
-                            maxLength={32}
-                            placeholder="e.g. Projects"
-                        />
+                        <select
+                            aria-label="Label"
+                            value={labelId}
+                            onChange={(event) => setLabelId(event.target.value)}
+                        >
+                            <option value="">Choose a label</option>
+                            {(props.labels ?? []).map((item) => (
+                                <option key={item.id} value={item.id}>
+                                    {item.name}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <div className="button-row">
+                        <button
+                            className="secondary"
+                            disabled={!labelId || busy}
+                            onClick={() =>
+                                void mutate('label', actions, {
+                                    label_id: Number(labelId),
+                                })
+                            }
+                        >
+                            <Tag size={18} />
+                            Apply label
+                        </button>
+                        <button
+                            className="secondary"
+                            disabled={!labelId || busy}
+                            onClick={() =>
+                                void mutate('remove-label', actions, {
+                                    label_id: Number(labelId),
+                                })
+                            }
+                        >
+                            Remove label
+                        </button>
+                    </div>
+                    <Link
+                        className="text-link"
+                        href={`/settings/organization/${mailbox?.id ?? ''}`}
+                        onClick={rememberMail}
+                    >
+                        Create or manage labels
+                    </Link>
+                    <label>
+                        Category
+                        <select
+                            aria-label="Category"
+                            value={categoryTarget}
+                            onChange={(event) =>
+                                setCategoryTarget(event.target.value)
+                            }
+                        >
+                            {categories.map(([value, name]) => (
+                                <option key={value} value={value}>
+                                    {name}
+                                </option>
+                            ))}
+                        </select>
                     </label>
                     <button
                         className="secondary"
-                        onClick={() => void mutate('label', actions)}
+                        disabled={busy}
+                        onClick={() =>
+                            void mutate('category', actions, {
+                                category: categoryTarget,
+                            })
+                        }
                     >
-                        <Tag size={18} />
-                        {label ? 'Apply label' : 'Clear label'}
+                        Move to category
                     </button>
                 </div>
+            </Sheet>
+            <Sheet
+                open={snooze}
+                onClose={() => setSnooze(false)}
+                title="Snooze messages"
+                side="bottom"
+            >
+                <p>
+                    Move these messages out of the way until later. They will
+                    return to your inbox when you next open or refresh WebMail
+                    after the chosen time.
+                </p>
+                <div className="action-list">
+                    <button
+                        disabled={busy}
+                        onClick={() =>
+                            void mutate('snooze', actions, {
+                                snoozed_until: new Date(
+                                    Date.now() + 3_600_000,
+                                ).toISOString(),
+                            })
+                        }
+                    >
+                        <Clock size={19} />
+                        In one hour
+                    </button>
+                    <button
+                        disabled={busy}
+                        onClick={() => {
+                            const date = new Date();
+                            date.setDate(date.getDate() + 1);
+                            date.setHours(9, 0, 0, 0);
+                            void mutate('snooze', actions, {
+                                snoozed_until: date.toISOString(),
+                            });
+                        }}
+                    >
+                        <Clock size={19} />
+                        Tomorrow at 9:00 AM
+                    </button>
+                </div>
+                <form
+                    className="admin-form"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        const date = new Date(snoozeDate);
+                        if (!Number.isNaN(date.valueOf()))
+                            void mutate('snooze', actions, {
+                                snoozed_until: date.toISOString(),
+                            });
+                    }}
+                >
+                    <label>
+                        Choose date and time
+                        <input
+                            type="datetime-local"
+                            required
+                            value={snoozeDate}
+                            onChange={(event) =>
+                                setSnoozeDate(event.target.value)
+                            }
+                        />
+                    </label>
+                    <p className="field-help">
+                        Your local time:{' '}
+                        {Intl.DateTimeFormat().resolvedOptions().timeZone}.
+                        Organization changes are shared with this mailbox’s
+                        members.
+                    </p>
+                    <button className="primary" disabled={busy || !snoozeDate}>
+                        Snooze until this time
+                    </button>
+                </form>
             </Sheet>
             <Sheet
                 open={purgeIds.length > 0}
@@ -1517,6 +2022,19 @@ export default function MailPage(props: MailProps) {
                     WebMail is a private, limited free-tier pilot. Your
                     administrator creates your account and manages providers.
                 </p>
+                <a
+                    href="/help/setup"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="setup-guide-link"
+                >
+                    Setup guide <ArrowRight size={16} />
+                    <span className="sr-only">(opens in a new tab)</span>
+                </a>
+                <p>
+                    Step-by-step help for personal settings, accounts, your
+                    domain and provider connections.
+                </p>
                 <h3>Install on your device</h3>
                 <p>
                     Where supported, use your browser’s Install app option. On
@@ -1531,8 +2049,35 @@ export default function MailPage(props: MailProps) {
                 <h3>Sending limits</h3>
                 <p>
                     The organization shares its sending allowance. Attachments
-                    are off and complete messages are limited to 256 KiB.
+                    may total up to 128 KiB (PDF, images, and text). Complete
+                    messages are limited to 256 KiB.
                 </p>
+                <h3>Keyboard shortcuts</h3>
+                <p>
+                    Enable shortcuts in{' '}
+                    <Link href="/settings/mail" onClick={rememberMail}>
+                        Mail settings
+                    </Link>
+                    . Shortcuts pause while you type or use a dialog.
+                </p>
+                <dl className="search-examples">
+                    <dt>Compose / search</dt>
+                    <dd>
+                        <kbd>C</kbd> / <kbd>/</kbd>
+                    </dd>
+                    <dt>Next / previous message</dt>
+                    <dd>
+                        <kbd>J</kbd> / <kbd>K</kbd>
+                    </dd>
+                    <dt>Select / star</dt>
+                    <dd>
+                        <kbd>X</kbd> / <kbd>S</kbd>
+                    </dd>
+                    <dt>Archive / help</dt>
+                    <dd>
+                        <kbd>E</kbd> / <kbd>?</kbd>
+                    </dd>
+                </dl>
                 {simulation && (
                     <p className="notice">
                         This local pilot uses fictional messages and a
@@ -1557,6 +2102,7 @@ function MessageRow({
     selected,
     index,
     preferences,
+    labels,
     onSelect,
     onOpen,
     onAction,
@@ -1567,6 +2113,7 @@ function MessageRow({
     selected: boolean;
     index: number;
     preferences: Preferences;
+    labels: MailLabel[];
     onSelect: () => void;
     onOpen: () => void;
     onAction: (action: string) => void;
@@ -1675,12 +2222,40 @@ function MessageRow({
                         {message.from_name || message.from_email}
                     </span>
                     <span className="row-content">
-                        {message.labels?.[0] && (
+                        {message.labels?.slice(0, 2).map((name) => (
                             <span
-                                className={`message-label label-${index % 3}`}
+                                key={name}
+                                className="message-label catalog-label"
+                                style={{
+                                    borderLeftColor:
+                                        labels.find(
+                                            (label) => label.name === name,
+                                        )?.color ?? 'var(--text-muted)',
+                                }}
                             >
-                                {message.labels[0]}
+                                {name}
                             </span>
+                        ))}
+                        {message.important && (
+                            <Flag
+                                size={14}
+                                className="row-marker"
+                                aria-label="Important"
+                            />
+                        )}
+                        {message.has_attachments && (
+                            <Paperclip
+                                size={14}
+                                className="row-marker"
+                                aria-label="Has attachments"
+                            />
+                        )}
+                        {message.snoozed_until && (
+                            <Clock
+                                size={14}
+                                className="row-marker"
+                                aria-label={`Snoozed until ${new Date(message.snoozed_until).toLocaleString()}`}
+                            />
                         )}
                         <span
                             className="row-subject"
@@ -1689,35 +2264,46 @@ function MessageRow({
                             <span className="sr-only">Open conversation: </span>
                             {message.subject || '(No subject)'}
                         </span>
-                        <span className="row-dash"> — </span>
-                        <span className="row-snippet">
-                            {message.body_text
-                                .replace(/\s+/g, ' ')
-                                .slice(0, 180)}
-                        </span>
+                        {preferences.snippets && (
+                            <>
+                                <span className="row-dash"> — </span>
+                                <span className="row-snippet">
+                                    {message.body_text
+                                        .replace(/\s+/g, ' ')
+                                        .slice(0, 180)}
+                                </span>
+                            </>
+                        )}
                     </span>
                     <time title={new Date(message.created_at).toLocaleString()}>
                         {dates(message.created_at)}
                     </time>
                 </button>
-                <div className="row-hover-actions">
-                    <IconButton
-                        icon={Archive}
-                        label={`Archive ${message.subject || 'message'}`}
-                        onClick={() => onAction('archive')}
-                    />
-                    <IconButton
-                        icon={message.is_read ? Mail : MailOpen}
-                        label={
-                            message.is_read
-                                ? 'Mark message unread'
-                                : 'Mark message read'
-                        }
-                        onClick={() =>
-                            onAction(message.is_read ? 'unread' : 'read')
-                        }
-                    />
-                </div>
+                {preferences.hover_actions && (
+                    <div className="row-hover-actions">
+                        <IconButton
+                            icon={Archive}
+                            label={`Archive ${message.subject || 'message'}`}
+                            onClick={() => onAction('archive')}
+                        />
+                        <IconButton
+                            icon={message.is_read ? Mail : MailOpen}
+                            label={
+                                message.is_read
+                                    ? 'Mark message unread'
+                                    : 'Mark message read'
+                            }
+                            onClick={() =>
+                                onAction(message.is_read ? 'unread' : 'read')
+                            }
+                        />
+                        <IconButton
+                            icon={Trash2}
+                            label={`Trash ${message.subject || 'message'}`}
+                            onClick={() => onAction('trash')}
+                        />
+                    </div>
+                )}
             </div>
         </li>
     );

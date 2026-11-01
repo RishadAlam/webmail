@@ -4,7 +4,7 @@
         name="viewport"
         content="width=device-width,initial-scale=1"
     /><meta name="theme-color" content="#f6f8fc" /><title>
-        WebMail · Offline</title
+        WebMail by Hookstack · Offline</title
     ><style>
         body {
             font:
@@ -26,8 +26,40 @@
         img {
             width: 48px;
             height: 48px;
-        }</style
-    ><img src="/favicon.svg" alt="WebMail" />
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 23px;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+        .brand small {
+            display: block;
+            margin-top: 5px;
+            font-size: 12px;
+            font-weight: 400;
+            color: #545b66;
+        }
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #15191f;
+                color: #e8ecf2;
+            }
+            a {
+                color: #a8c7fa;
+            }
+            .brand small {
+                color: #b1bbc8;
+            }
+        }
+    </style>
+    <link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml" />
+    <div class="brand" role="img" aria-label="WebMail by Hookstack">
+        <img src="/favicon.svg?v=3" alt="" />
+        <span aria-hidden="true">WebMail <small>by Hookstack</small></span>
+    </div>
     <h1>You’re offline.</h1>
     <p>
         WebMail needs a connection to load your mailbox. No mail or private

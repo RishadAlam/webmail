@@ -788,7 +788,16 @@ export function ProviderConnections({ owner }: { owner: boolean }) {
         <>
             <p className="section-intro">
                 Connect the owner’s provider accounts. Ordinary users only need
-                their WebMail account.
+                their WebMail account.{' '}
+                <a
+                    href="/help/setup#save-connections-in-webmail"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="setup-guide-link"
+                >
+                    Setup guide{' '}
+                    <span className="sr-only">(opens in a new tab)</span>
+                </a>
             </p>
             <div className="status-banner">
                 <div>
