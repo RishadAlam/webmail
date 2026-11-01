@@ -65,6 +65,7 @@ async function request(
     path: string,
     body: object,
     nonce = crypto.randomUUID(),
+    target = env,
 ) {
     const raw = JSON.stringify(body),
         time = String(Math.floor(Date.now() / 1000));
@@ -76,12 +77,12 @@ async function request(
                 'X-Postroom-Time': time,
                 'X-Postroom-Nonce': nonce,
                 'X-Postroom-Signature': await signature(
-                    env.INGRESS_SECRET,
+                    target.INGRESS_SECRET,
                     `${time}\n${nonce}\nPOST\n${path}\n${raw}`,
                 ),
             },
         }),
-        env,
+        target,
     );
 }
 
@@ -377,10 +378,482 @@ void test('lease expiry permits replay and acknowledgement checks the committed 
         ).status,
         200,
     );
+    const retained = await env.DB.prepare(
+        'SELECT raw, state, bytes, acknowledged_at, retained_until FROM spool',
+    ).first();
     assert.equal(
-        (await env.DB.prepare('SELECT raw FROM spool').first()).raw,
+        atob(retained.raw),
+        'From: a@example.net\r\nSubject: Test\r\n\r\nFictional mail',
+    );
+    assert.equal(retained.state, 'acknowledged');
+    assert.equal(retained.retained_until - retained.acknowledged_at, 86400);
+    assert.equal(
+        (await env.DB.prepare('SELECT used FROM counters').first()).used,
+        retained.bytes,
+    );
+    assert.equal(
+        ((await (await request('/v1/claim', { limit: 10 })).json()) as any)
+            .items.length,
+        0,
+    );
+});
+
+void test('repeated acknowledgement preserves original retention deadline and storage accounting', async () => {
+    await sendMail();
+    const row = await env.DB.prepare('SELECT * FROM spool').first();
+    const receipt = { id: row.id, checksum: row.checksum };
+    assert.equal((await request('/v1/ack', receipt)).status, 200);
+    const first = await env.DB.prepare('SELECT * FROM spool').first();
+    env.ACK_RETENTION_SECONDS = '3600';
+    assert.equal((await request('/v1/ack', receipt)).status, 200);
+    assert.deepEqual(
+        await env.DB.prepare('SELECT * FROM spool').first(),
+        first,
+    );
+    assert.equal(
+        (await env.DB.prepare('SELECT used FROM counters').first()).used,
+        row.bytes,
+    );
+});
+
+void test('retention expiry purges acknowledged payloads only and retains counted receipt tombstones', async (t) => {
+    await sendMail('Acknowledged content');
+    const acknowledged = await env.DB.prepare('SELECT * FROM spool').first();
+    await request('/v1/ack', {
+        id: acknowledged.id,
+        checksum: acknowledged.checksum,
+    });
+    await env.DB.prepare('UPDATE spool SET retained_until = 1 WHERE id = ?')
+        .bind(acknowledged.id)
+        .run();
+    await sendMail('Still awaiting the main database');
+    const pending = await env.DB.prepare(
+        "SELECT * FROM spool WHERE state = 'pending'",
+    ).first();
+    await env.DB.prepare(
+        'UPDATE spool SET created_at = 1, retained_until = 1 WHERE id = ?',
+    )
+        .bind(pending.id)
+        .run();
+    t.mock.method(globalThis, 'fetch', async () => new Response('{}'));
+
+    await worker.scheduled({} as any, env);
+    const purged = await env.DB.prepare('SELECT * FROM spool WHERE id = ?')
+        .bind(acknowledged.id)
+        .first();
+    assert.equal(purged.raw, null);
+    assert.equal(purged.bytes, 512);
+    assert.equal(purged.checksum, acknowledged.checksum);
+    assert.equal(purged.state, 'acknowledged');
+    assert.equal(
+        (
+            await env.DB.prepare('SELECT raw FROM spool WHERE id = ?')
+                .bind(pending.id)
+                .first()
+        ).raw,
+        pending.raw,
+    );
+    assert.equal(
+        (await env.DB.prepare('SELECT used FROM counters').first()).used,
+        pending.bytes + 512,
+    );
+    await worker.scheduled({} as any, env);
+    assert.equal(
+        (await env.DB.prepare('SELECT used FROM counters').first()).used,
+        pending.bytes + 512,
+    );
+    assert.equal(
+        (
+            await request('/v1/ack', {
+                id: acknowledged.id,
+                checksum: acknowledged.checksum,
+            })
+        ).status,
+        200,
+    );
+    assert.equal(
+        (
+            await env.DB.prepare('SELECT raw FROM spool WHERE id = ?')
+                .bind(acknowledged.id)
+                .first()
+        ).raw,
         null,
     );
+});
+
+void test('retained recovery inventory is bounded and explicit signed replay restores the original receipt', async () => {
+    await sendMail('Restorable original MIME');
+    const row = await env.DB.prepare('SELECT * FROM spool').first();
+    await request('/v1/ack', { id: row.id, checksum: row.checksum });
+    const inventory = (await (
+        await request('/v1/recovery', { limit: 1 })
+    ).json()) as any;
+    assert.equal(inventory.items.length, 1);
+    assert.equal(inventory.items[0].id, row.id);
+    assert.equal(inventory.items[0].checksum, row.checksum);
+    assert.equal(inventory.items[0].raw, undefined);
+    assert.equal(
+        (
+            (await (
+                await request('/v1/recovery', { after: row.id })
+            ).json()) as any
+        ).items.length,
+        0,
+    );
+    assert.equal(
+        (await request('/v1/replay', { id: row.id, checksum: 'a'.repeat(64) }))
+            .status,
+        409,
+    );
+    assert.equal(
+        (await request('/v1/replay', { id: row.id, checksum: row.checksum }))
+            .status,
+        200,
+    );
+    assert.equal(
+        (await request('/v1/replay', { id: row.id, checksum: row.checksum }))
+            .status,
+        200,
+    );
+    const claimed = (await (
+        await request('/v1/claim', { limit: 10 })
+    ).json()) as any;
+    assert.equal(claimed.items[0].id, row.id);
+    assert.equal(claimed.items[0].checksum, row.checksum);
+    assert.equal(atob(claimed.items[0].raw), 'Restorable original MIME');
+    assert.equal(
+        (await env.DB.prepare('SELECT used FROM counters').first()).used,
+        row.bytes,
+    );
+    const leased = await env.DB.prepare(
+        'SELECT lease_until FROM spool',
+    ).first();
+    await request('/v1/replay', { id: row.id, checksum: row.checksum });
+    assert.deepEqual(
+        await env.DB.prepare('SELECT lease_until FROM spool').first(),
+        leased,
+    );
+});
+
+void test('recovery refuses expired payloads and malformed inventory bounds', async () => {
+    await sendMail();
+    const row = await env.DB.prepare('SELECT * FROM spool').first();
+    await request('/v1/ack', { id: row.id, checksum: row.checksum });
+    await env.DB.prepare('UPDATE spool SET retained_until = 1').run();
+    assert.equal(
+        (await request('/v1/replay', { id: row.id, checksum: row.checksum }))
+            .status,
+        410,
+    );
+    assert.equal((await request('/v1/recovery', { limit: 100 })).status, 422);
+    assert.equal(
+        (await request('/v1/recovery', { after: 'x'.repeat(101) })).status,
+        422,
+    );
+    assert.equal(
+        (await env.DB.prepare('SELECT state FROM spool').first()).state,
+        'acknowledged',
+    );
+});
+
+void test('recovery inventory pages through retained metadata without exceeding ten receipts', async () => {
+    await sendMail();
+    const row = await env.DB.prepare('SELECT * FROM spool').first();
+    await request('/v1/ack', { id: row.id, checksum: row.checksum });
+    await env.DB.batch(
+        Array.from({ length: 11 }, () =>
+            env.DB.prepare(
+                "INSERT INTO spool(id,kind,raw,checksum,bytes,state,created_at,acknowledged_at,retained_until) VALUES (?,'mail',?,?,?,'acknowledged',1,1,?)",
+            ).bind(
+                crypto.randomUUID(),
+                row.raw,
+                row.checksum,
+                row.bytes,
+                Math.floor(Date.now() / 1000) + 3600,
+            ),
+        ),
+    );
+    const first = (await (await request('/v1/recovery', {})).json()) as any;
+    assert.equal(first.items.length, 10);
+    assert.deepEqual(Object.keys(first.items[0]).sort(), [
+        'acknowledged_at',
+        'checksum',
+        'created_at',
+        'id',
+        'kind',
+        'retained_until',
+    ]);
+    const second = (await (
+        await request('/v1/recovery', { after: first.next_after })
+    ).json()) as any;
+    assert.equal(second.items.length, 2);
+    assert.equal(
+        new Set([...first.items, ...second.items].map((item) => item.id)).size,
+        12,
+    );
+    const end = (await (
+        await request('/v1/recovery', { after: second.next_after })
+    ).json()) as any;
+    assert.equal(end.items.length, 0);
+    assert.equal(end.next_after, null);
+});
+
+void test('the retention migration preserves pending data and old purged tombstones without changing accounting', async () => {
+    // This explicit pre-retention shape is a migration fixture, independent of the
+    // current bootstrap schema. The database is disposable and contains no mail yet.
+    await env.DB.prepare('DROP TABLE spool').run();
+    await env.DB.prepare(
+        "CREATE TABLE spool (id TEXT PRIMARY KEY, kind TEXT NOT NULL DEFAULT 'mail', recipient TEXT NOT NULL DEFAULT '', sender TEXT NOT NULL DEFAULT '', raw TEXT, checksum TEXT NOT NULL, bytes INTEGER NOT NULL, state TEXT NOT NULL DEFAULT 'pending', lease_until INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL)",
+    ).run();
+    await env.DB.prepare(
+        "INSERT INTO spool(id,raw,checksum,bytes,state,created_at) VALUES ('pending','fictional pending MIME','pending-checksum',2048,'pending',1),('retained','fictional acknowledged MIME','retained-checksum',2048,'acknowledged',1),('purged',NULL,'purged-checksum',512,'acknowledged',1)",
+    ).run();
+    await env.DB.prepare('UPDATE counters SET used = 4608').run();
+    const migration = await readFile(
+        new URL(
+            '../migrations/0002_acknowledged_payload_retention.sql',
+            import.meta.url,
+        ),
+        'utf8',
+    );
+    for (const sql of migration
+        .split(';')
+        .map((statement) => statement.trim())
+        .filter(Boolean))
+        await env.DB.prepare(sql).run();
+    const pending = await env.DB.prepare(
+        "SELECT * FROM spool WHERE id = 'pending'",
+    ).first();
+    assert.equal(pending.raw, 'fictional pending MIME');
+    assert.equal(pending.state, 'pending');
+    assert.equal(pending.acknowledged_at, null);
+    assert.equal(pending.retained_until, null);
+    const retained = await env.DB.prepare(
+        "SELECT * FROM spool WHERE id = 'retained'",
+    ).first();
+    assert.equal(retained.raw, 'fictional acknowledged MIME');
+    assert.equal(retained.retained_until - retained.acknowledged_at, 86400);
+    assert.ok(retained.acknowledged_at >= Math.floor(Date.now() / 1000) - 1);
+    const purged = await env.DB.prepare(
+        "SELECT * FROM spool WHERE id = 'purged'",
+    ).first();
+    assert.equal(purged.raw, null);
+    assert.equal(purged.bytes, 512);
+    assert.equal(purged.checksum, 'purged-checksum');
+    assert.equal(
+        (await env.DB.prepare('SELECT used FROM counters').first()).used,
+        4608,
+    );
+});
+
+void test('retained payloads continue consuming capacity and are never purged early to admit new mail', async (t) => {
+    await env.DB.prepare(
+        'UPDATE counters SET budget = 3000 WHERE id = 1',
+    ).run();
+    await sendMail('a'.repeat(500));
+    const row = await env.DB.prepare('SELECT * FROM spool').first();
+    await request('/v1/ack', { id: row.id, checksum: row.checksum });
+    let calls = 0;
+    t.mock.method(globalThis, 'fetch', async () => {
+        calls++;
+        return new Response('{}');
+    });
+    await worker.scheduled({} as any, env);
+    assert.match((await sendMail('b'.repeat(500)))!, /cannot safely store/i);
+    assert.equal(
+        (await env.DB.prepare('SELECT raw FROM spool').first()).raw,
+        row.raw,
+    );
+    assert.equal(
+        (await env.DB.prepare('SELECT used FROM counters').first()).used,
+        row.bytes,
+    );
+    assert.equal(calls, 0);
+    await env.DB.prepare('UPDATE spool SET retained_until = 1').run();
+    await worker.scheduled({} as any, env);
+    assert.equal(await sendMail('After expiry'), undefined);
+});
+
+void test('one scheduled maintenance pass bounds payload retirement to 100 receipts', async (t) => {
+    await sendMail();
+    const row = await env.DB.prepare('SELECT * FROM spool').first();
+    await request('/v1/ack', { id: row.id, checksum: row.checksum });
+    await env.DB.prepare('UPDATE spool SET retained_until = 1').run();
+    await env.DB.batch(
+        Array.from({ length: 100 }, () =>
+            env.DB.prepare(
+                "INSERT INTO spool(id,kind,raw,checksum,bytes,state,created_at,acknowledged_at,retained_until) VALUES (?,'mail',?,?,?,'acknowledged',1,1,1)",
+            ).bind(crypto.randomUUID(), row.raw, row.checksum, row.bytes),
+        ),
+    );
+    let calls = 0;
+    t.mock.method(globalThis, 'fetch', async () => {
+        calls++;
+        return new Response('{}');
+    });
+    await worker.scheduled({} as any, env);
+    assert.equal(
+        (
+            await env.DB.prepare(
+                'SELECT count(*) AS n FROM spool WHERE raw IS NULL',
+            ).first()
+        ).n,
+        100,
+    );
+    assert.equal(
+        (await env.DB.prepare('SELECT used FROM counters').first()).used,
+        51200 + row.bytes,
+    );
+    assert.equal(calls, 0);
+});
+
+void test('recovery endpoints reject unsigned requests without exposing or changing retained records', async () => {
+    await sendMail();
+    const row = await env.DB.prepare('SELECT * FROM spool').first();
+    await request('/v1/ack', { id: row.id, checksum: row.checksum });
+    for (const path of ['/v1/recovery', '/v1/replay']) {
+        const response = await worker.fetch(
+            new Request('https://worker.example' + path, {
+                method: 'POST',
+                body: JSON.stringify({ id: row.id, checksum: row.checksum }),
+            }),
+            env,
+        );
+        assert.equal(response.status, 401);
+    }
+    assert.equal(
+        (await env.DB.prepare('SELECT state FROM spool').first()).state,
+        'acknowledged',
+    );
+});
+
+void test('cold-start sync allows a slow successful response and never clears pending mail itself', async (t) => {
+    await sendMail();
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    t.mock.method(AbortSignal, 'timeout', (milliseconds: number) => {
+        const controller = new AbortController();
+        setTimeout(
+            () => controller.abort(new Error('Simulated deadline')),
+            milliseconds,
+        );
+        return controller.signal;
+    });
+    let entered!: () => void;
+    const started = new Promise<void>((resolve) => {
+        entered = resolve;
+    });
+    t.mock.method(
+        globalThis,
+        'fetch',
+        async (_url: string, options: RequestInit) => {
+            entered();
+            return new Promise<Response>((resolve, reject) => {
+                options.signal!.addEventListener(
+                    'abort',
+                    () => reject(options.signal!.reason),
+                    { once: true },
+                );
+                setTimeout(() => resolve(new Response('{}')), 65000);
+            });
+        },
+    );
+    const sync = worker.scheduled({} as any, env);
+    await started;
+    t.mock.timers.tick(65000);
+    await sync;
+    assert.equal(
+        (await env.DB.prepare('SELECT failures FROM wake_state').first())
+            .failures,
+        0,
+    );
+    assert.equal(
+        (await env.DB.prepare('SELECT state FROM spool').first()).state,
+        'pending',
+    );
+});
+
+void test('sync timeout is bounded, cancels a stalled response and backs off without idle pings', async (t) => {
+    await sendMail();
+    env.SYNC_TIMEOUT_SECONDS = '999999';
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    t.mock.method(AbortSignal, 'timeout', (milliseconds: number) => {
+        const controller = new AbortController();
+        setTimeout(
+            () => controller.abort(new Error('Simulated deadline')),
+            milliseconds,
+        );
+        return controller.signal;
+    });
+    let calls = 0;
+    let aborted = false;
+    let entered!: () => void;
+    const started = new Promise<void>((resolve) => {
+        entered = resolve;
+    });
+    t.mock.method(
+        globalThis,
+        'fetch',
+        async (_url: string, options: RequestInit) => {
+            calls++;
+            entered();
+            return new Promise<Response>((_resolve, reject) => {
+                options.signal!.addEventListener(
+                    'abort',
+                    () => {
+                        aborted = true;
+                        reject(options.signal!.reason);
+                    },
+                    { once: true },
+                );
+            });
+        },
+    );
+    const sync = worker.scheduled({} as any, env);
+    await started;
+    t.mock.timers.tick(179999);
+    assert.equal(aborted, false);
+    t.mock.timers.tick(1);
+    await sync;
+    assert.equal(aborted, true);
+    const state = await env.DB.prepare('SELECT * FROM wake_state').first();
+    assert.equal(state.failures, 1);
+    assert.ok(state.next_at >= Math.floor(Date.now() / 1000) + 1799);
+    await worker.scheduled({} as any, env);
+    assert.equal(calls, 1);
+    await env.DB.prepare("UPDATE spool SET state = 'acknowledged'").run();
+    await env.DB.prepare('UPDATE wake_state SET next_at = 0').run();
+    await worker.scheduled({} as any, env);
+    assert.equal(calls, 1);
+});
+
+void test('repeated sync failures keep exponential backoff bounded and a later success resets it', async (t) => {
+    await sendMail();
+    let responseStatus = 503;
+    t.mock.method(
+        globalThis,
+        'fetch',
+        async () => new Response('{}', { status: responseStatus }),
+    );
+    const delays: number[] = [];
+    for (let attempt = 0; attempt < 8; attempt++) {
+        await env.DB.prepare('UPDATE wake_state SET next_at = 0').run();
+        const started = Math.floor(Date.now() / 1000);
+        await worker.scheduled({} as any, env);
+        const { next_at } = await env.DB.prepare(
+            'SELECT next_at FROM wake_state',
+        ).first();
+        const delay = next_at - started;
+        assert.ok(delay >= 1800 && delay <= 86400);
+        delays.push(delay);
+    }
+    assert.ok(delays[1] > delays[0]);
+    assert.ok(Math.abs(delays[7] - delays[6]) <= 1);
+    responseStatus = 200;
+    await env.DB.prepare('UPDATE wake_state SET next_at = 0').run();
+    await worker.scheduled({} as any, env);
+    const state = await env.DB.prepare('SELECT * FROM wake_state').first();
+    assert.equal(state.failures, 0);
+    assert.ok(state.next_at <= Math.floor(Date.now() / 1000) + 901);
 });
 void test('signed requests reject replay and unsigned requests', async () => {
     const nonce = crypto.randomUUID();
@@ -529,6 +1002,93 @@ void test('accepted MIME survives a full local D1 runtime restart before import'
             .first()) as any;
         assert.equal(atob(row.raw), raw);
         assert.equal(row.state, 'pending');
+    } finally {
+        await instance.dispose();
+        await rm(directory, { recursive: true, force: true });
+    }
+});
+
+void test('acknowledged MIME, its recovery window and budget survive restart and permit exact replay', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'postroom-retained-'));
+    const options = {
+        modules: true,
+        script: 'export default {fetch(){return new Response("test")}}',
+        d1Databases: ['DB'],
+        d1Persist: directory,
+        compatibilityDate: '2026-07-01',
+    };
+    let instance = new Miniflare(options);
+    try {
+        let db = await instance.getD1Database('DB');
+        const schema = await readFile(
+            new URL('../schema.sql', import.meta.url),
+            'utf8',
+        );
+        for (const sql of schema
+            .split('-- statement')
+            .map((s) => s.trim())
+            .filter(Boolean))
+            await db.prepare(sql).run();
+        await db
+            .prepare("INSERT INTO recipients VALUES ('mira@postroom.test',1,1)")
+            .run();
+        const raw =
+            'From: fiction@example.net\r\nSubject: Retained through restart\r\n\r\nFictional recovery evidence.';
+        await receive(
+            {
+                from: 'fiction@example.net',
+                to: 'mira@postroom.test',
+                rawSize: raw.length,
+                raw: new Blob([raw]).stream(),
+                setReject: () =>
+                    assert.fail('Retention fixture must be accepted'),
+            } as any,
+            { ...env, DB: db },
+        );
+        const accepted = (await db
+            .prepare('SELECT * FROM spool')
+            .first()) as any;
+        const receipt = { id: accepted.id, checksum: accepted.checksum };
+        assert.equal(
+            (
+                await request('/v1/ack', receipt, crypto.randomUUID(), {
+                    ...env,
+                    DB: db,
+                })
+            ).status,
+            200,
+        );
+        const retained = await db.prepare('SELECT * FROM spool').first();
+        await instance.dispose();
+        instance = new Miniflare(options);
+        db = await instance.getD1Database('DB');
+        assert.deepEqual(
+            await db.prepare('SELECT * FROM spool').first(),
+            retained,
+        );
+        assert.equal(
+            ((await db.prepare('SELECT used FROM counters').first()) as any)
+                .used,
+            accepted.bytes,
+        );
+        assert.equal(
+            (
+                await request('/v1/replay', receipt, crypto.randomUUID(), {
+                    ...env,
+                    DB: db,
+                })
+            ).status,
+            200,
+        );
+        const replay = (await (
+            await request('/v1/claim', { limit: 1 }, crypto.randomUUID(), {
+                ...env,
+                DB: db,
+            })
+        ).json()) as any;
+        assert.equal(replay.items[0].id, receipt.id);
+        assert.equal(replay.items[0].checksum, receipt.checksum);
+        assert.equal(atob(replay.items[0].raw), raw);
     } finally {
         await instance.dispose();
         await rm(directory, { recursive: true, force: true });

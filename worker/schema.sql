@@ -8,9 +8,11 @@ CREATE TABLE counters (id INTEGER PRIMARY KEY, used INTEGER NOT NULL DEFAULT 0, 
 -- statement
 INSERT INTO counters(id) VALUES (1);
 -- statement
-CREATE TABLE spool (id TEXT PRIMARY KEY, kind TEXT NOT NULL DEFAULT 'mail', recipient TEXT NOT NULL DEFAULT '', sender TEXT NOT NULL DEFAULT '', raw TEXT, checksum TEXT NOT NULL, bytes INTEGER NOT NULL, state TEXT NOT NULL DEFAULT 'pending', lease_until INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL);
+CREATE TABLE spool (id TEXT PRIMARY KEY, kind TEXT NOT NULL DEFAULT 'mail', recipient TEXT NOT NULL DEFAULT '', sender TEXT NOT NULL DEFAULT '', raw TEXT, checksum TEXT NOT NULL, bytes INTEGER NOT NULL, state TEXT NOT NULL DEFAULT 'pending', lease_until INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, acknowledged_at INTEGER, retained_until INTEGER);
 -- statement
 CREATE INDEX pending_spool ON spool(state, lease_until, created_at);
+-- statement
+CREATE INDEX retained_spool ON spool(state, retained_until) WHERE raw IS NOT NULL;
 -- statement
 CREATE TRIGGER capacity_before_insert BEFORE INSERT ON spool BEGIN SELECT CASE WHEN (SELECT used + NEW.bytes > budget FROM counters WHERE id = 1) THEN RAISE(ABORT, 'spool full') END; END;
 -- statement

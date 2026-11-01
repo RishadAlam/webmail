@@ -19,6 +19,7 @@ class Message extends Model
     protected function casts(): array
     {
         return ['to' => 'array', 'cc' => 'array', 'reply_to' => 'array', 'labels' => 'array', 'is_read' => 'boolean', 'starred' => 'boolean',
+            'important' => 'boolean', 'snoozed_until' => 'datetime',
             'has_attachments' => 'boolean', 'body_text' => 'encrypted', 'body_html' => 'encrypted', 'raw_mime' => 'encrypted'];
     }
 }

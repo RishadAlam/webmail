@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\MailPalette;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;
@@ -16,7 +17,11 @@ class HandleAppearance
      */
     public function handle(Request $request, Closure $next): Response
     {
-        View::share('appearance', $request->cookie('appearance') ?? 'system');
+        $preferences = $request->user()->preferences ?? [];
+        $appearance = $preferences['theme'] ?? $request->cookie('appearance');
+        View::share('appearance', in_array($appearance, ['light', 'dark', 'system'], true) ? $appearance : 'system');
+        $palette = $preferences['palette'] ?? null;
+        View::share('palette', is_string($palette) ? (MailPalette::tryFrom($palette)->value ?? 'default') : 'default');
 
         return $next($request);
     }

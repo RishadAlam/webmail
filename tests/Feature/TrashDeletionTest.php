@@ -52,12 +52,27 @@ class TrashDeletionTest extends TestCase
         $this->actingAs($user);
         $this->deleteJson('/mail/'.$box->id.'/trash', ['ids' => [$trash->id]])->assertUnprocessable();
         $this->deleteJson('/mail/'.$box->id.'/trash', ['ids' => [$trash->id], 'confirmation' => 'delete'])->assertUnprocessable();
-        $this->deleteJson('/mail/'.$box->id.'/trash', ['ids' => array_fill(0, 31, $trash->id), 'confirmation' => 'DELETE'])->assertUnprocessable();
+        $this->deleteJson('/mail/'.$box->id.'/trash', ['ids' => range(1, 101), 'confirmation' => 'DELETE'])->assertUnprocessable();
         $this->deleteJson('/mail/'.$box->id.'/trash', ['ids' => [$trash->id, $trash->id], 'confirmation' => 'DELETE'])->assertUnprocessable();
         $this->deleteJson('/mail/'.$box->id.'/trash', ['ids' => [$trash->id, $inbox->id], 'confirmation' => 'DELETE'])->assertConflict();
         $this->assertModelExists($trash);
         $this->assertModelExists($inbox);
         $this->assertSame(200, (int) $box->fresh()->used_bytes);
+    }
+
+    public function test_largest_visible_page_can_be_deleted_without_deleting_other_messages(): void
+    {
+        [$user, $box] = $this->account();
+        $ids = [];
+        for ($i = 0; $i < 100; $i++) {
+            $ids[] = $this->message($box, 'trash', 10)->id;
+        }
+        $retained = $this->message($box, 'trash', 20);
+        $box->update(['used_bytes' => 1020]);
+        $this->actingAs($user)->deleteJson('/mail/'.$box->id.'/trash', ['ids' => $ids, 'confirmation' => 'DELETE'])
+            ->assertOk()->assertJsonPath('deleted', 100)->assertJsonPath('remaining_bytes', 20);
+        $this->assertModelExists($retained);
+        $this->assertSame(1, Message::count());
     }
 
     public function test_guessed_mailboxes_or_mixed_cross_mailbox_ids_cannot_delete_mail_even_for_an_admin(): void

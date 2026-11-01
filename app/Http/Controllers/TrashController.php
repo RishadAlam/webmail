@@ -18,7 +18,7 @@ class TrashController extends Controller
     {
         Gate::authorize('view', $mailbox);
         $data = $request->validate([
-            'ids' => 'required|array|min:1|max:30',
+            'ids' => 'required|array|min:1|max:100',
             'ids.*' => 'required|integer|distinct',
             'confirmation' => 'required|in:DELETE',
         ]);

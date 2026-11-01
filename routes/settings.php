@@ -28,6 +28,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('user-password.update');
 
     Route::inertia('settings/appearance', 'settings/appearance')->name('appearance.edit');
+    Route::inertia('settings/themes', 'settings/appearance')->name('themes.edit');
 });
 
 /* @chisel-passkeys */

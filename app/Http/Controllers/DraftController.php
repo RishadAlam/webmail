@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Address;
 use App\Models\Draft;
+use App\Models\DraftAttachment;
 use App\Models\Mailbox;
 use App\Models\Message;
 use App\Services\DeliveryService;
+use App\Services\DraftMime;
+use App\Services\MailAttachments;
+use App\Services\MailWriting;
 use App\Services\StorageBudget;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +22,7 @@ class DraftController extends Controller
     {
         $this->authorizeDraft($request, $draft);
 
-        return response()->json($draft);
+        return response()->json(app(MailAttachments::class)->draftResponse($draft));
     }
 
     public function create(Request $request, Mailbox $mailbox): mixed
@@ -47,7 +51,7 @@ class DraftController extends Controller
             }
             $fields['body'] = '<p></p><blockquote><p>'.e($message->from_name ?: $message->from_email).' wrote:</p><p>'.nl2br(e($message->body_text)).'</p></blockquote>';
             if ($forward && $message->has_attachments) {
-                $fields['body'] = '<p>Attachments are not included in this forwarded message. Attachment access is disabled in this pilot; the original message is retained.</p>'.$fields['body'];
+                $fields['body'] = '<p>Attachments are not included in this forwarded message. Download them from the original message and attach supported files before sending.</p>'.$fields['body'];
             }
             if (! $forward) {
                 $fields['thread_id'] = $message->thread_id;
@@ -58,20 +62,34 @@ class DraftController extends Controller
         if ($request->filled('copy_failed')) {
             $failed = Draft::whereKey($request->string('copy_failed')->toString())->where('user_id', $request->user()->id)->where('mailbox_id', $mailbox->id)->where('status', 'failed')->firstOrFail();
             $fields = [...$fields, ...$failed->only(['to', 'cc', 'bcc', 'subject', 'body', 'in_reply_to', 'thread_id'])];
+        } else {
+            $signature = app(MailWriting::class)->signature($request->user()->id)['body'];
+            if ($signature !== '') {
+                $fields['body'] = '<p></p><p>'.nl2br(e($signature)).'</p>'.$fields['body'];
+            }
         }
         $this->validateDraftContent($fields);
-        $draft = DB::transaction(function () use ($mailbox, $fields) {
+        $copyAttachmentsFrom = isset($failed) ? $failed->id : null;
+        $draft = DB::transaction(function () use ($mailbox, $fields, $copyAttachmentsFrom) {
             DB::table('quota_lock')->where('id', 1)->lockForUpdate()->first();
             $box = Mailbox::whereKey($mailbox->id)->lockForUpdate()->firstOrFail();
             abort_if(Draft::where('mailbox_id', $box->id)->whereIn('status', ['draft', 'held'])->count() >= 100, 422, 'This mailbox has 100 editable drafts. Remove unused drafts before creating another.');
-            $bytes = 1024 + strlen(json_encode($fields, JSON_THROW_ON_ERROR));
+            $copies = $copyAttachmentsFrom !== null ? DraftAttachment::where('draft_id', $copyAttachmentsFrom)->get() : collect();
+            $bytes = 1024 + strlen(json_encode($fields, JSON_THROW_ON_ERROR)) + $copies->sum('logical_bytes');
             abort_if(! app(StorageBudget::class)->permits($bytes) || $box->used_bytes + $bytes > $box->quota_bytes || Mailbox::sum('used_bytes') + $bytes > config('postroom.organization_bytes'), 422, 'Mailbox storage is full. Remove unused drafts before creating another.');
             $box->increment('used_bytes', $bytes);
+            $draft = Draft::create([...$fields, 'logical_bytes' => $bytes]);
+            foreach ($copies as $file) {
+                DraftAttachment::create([...$file->only(['name', 'type', 'size', 'logical_bytes', 'content']), 'draft_id' => $draft->id]);
+            }
+            if ($copies->isNotEmpty()) {
+                app(DraftMime::class)->render($draft);
+            }
 
-            return Draft::create([...$fields, 'logical_bytes' => $bytes]);
+            return $draft;
         }, 3);
 
-        return response()->json($draft, 201);
+        return response()->json(app(MailAttachments::class)->draftResponse($draft), 201);
     }
 
     public function update(Request $request, Draft $draft): mixed
@@ -87,7 +105,11 @@ class DraftController extends Controller
             $current = Draft::whereKey($draft->id)->lockForUpdate()->firstOrFail();
             abort_unless(in_array($current->status, ['draft', 'held']), 409, 'A send intent already exists. This draft is retained for reference and cannot be resent.');
             abort_unless($current->version === $data['version'], 409, 'Another tab saved this draft. Your unsaved changes are still open; copy them before reloading.');
-            $bytes = 1024 + strlen($data['body']) + strlen(json_encode($data, JSON_THROW_ON_ERROR));
+            $attachmentBytes = (int) DraftAttachment::where('draft_id', $current->id)->sum('logical_bytes');
+            if ($attachmentBytes > 0) {
+                app(DraftMime::class)->render((clone $current)->fill($data));
+            }
+            $bytes = 1024 + strlen($data['body']) + strlen(json_encode($data, JSON_THROW_ON_ERROR)) + $attachmentBytes;
             $box = Mailbox::whereKey($draft->mailbox_id)->lockForUpdate()->firstOrFail();
             abort_if(! app(StorageBudget::class)->permits($bytes) || $box->used_bytes + $bytes - $current->logical_bytes > $box->quota_bytes || Mailbox::sum('used_bytes') + $bytes - $current->logical_bytes > config('postroom.organization_bytes'), 422, 'Mailbox storage is full. Keep this editor open and ask an administrator for help.');
             $box->increment('used_bytes', $bytes - $current->logical_bytes);
@@ -96,7 +118,7 @@ class DraftController extends Controller
             return $current;
         }, 3);
 
-        return response()->json($saved);
+        return response()->json(app(MailAttachments::class)->draftResponse($saved));
     }
 
     public function delete(Request $request, Draft $draft): mixed

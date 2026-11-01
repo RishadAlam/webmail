@@ -4,6 +4,8 @@ export interface Env {
     RESEND_WEBHOOK_SECRET: string;
     APP_URL: string;
     MAIL_DOMAIN: string;
+    SYNC_TIMEOUT_SECONDS?: string;
+    ACK_RETENTION_SECONDS?: string;
 }
 const MAX = 262144;
 const MAX_DIRECTORY_BYTES = 32768;
@@ -132,6 +134,96 @@ function json(data: unknown, status = 200): Response {
         status,
         headers: { 'Cache-Control': 'no-store' },
     });
+}
+
+function boundedSeconds(
+    value: string | undefined,
+    fallback: number,
+    min: number,
+    max: number,
+): number {
+    const seconds = Number(value);
+    return Number.isSafeInteger(seconds) && value !== ''
+        ? Math.max(min, Math.min(max, seconds))
+        : fallback;
+}
+
+async function purgeAcknowledged(env: Env): Promise<void> {
+    // Only expired, acknowledged payloads are disposable. Accepted/unimported rows
+    // remain durable regardless of age, capacity pressure, or a recovery replay.
+    await env.DB.prepare(
+        "UPDATE spool SET raw = NULL, bytes = 512 WHERE id IN (SELECT id FROM spool WHERE state = 'acknowledged' AND raw IS NOT NULL AND retained_until <= ? ORDER BY retained_until LIMIT 100)",
+    )
+        .bind(now())
+        .run();
+}
+
+async function recoveryInventory(
+    payload: unknown,
+    env: Env,
+): Promise<Response> {
+    if (!payload || typeof payload !== 'object')
+        return json({ error: 'Invalid recovery request' }, 422);
+    const { limit = 10, after = '' } = payload as Record<string, unknown>;
+    if (
+        !Number.isSafeInteger(limit) ||
+        (limit as number) < 1 ||
+        (limit as number) > 10 ||
+        typeof after !== 'string' ||
+        after.length > 100
+    )
+        return json(
+            {
+                error: 'Recovery pages require a limit of 1–10 and a receipt cursor of at most 100 characters',
+            },
+            422,
+        );
+    const result = await env.DB.prepare(
+        "SELECT id, kind, checksum, created_at, acknowledged_at, retained_until FROM spool WHERE state = 'acknowledged' AND raw IS NOT NULL AND retained_until > ? AND id > ? ORDER BY id LIMIT ?",
+    )
+        .bind(now(), after, limit)
+        .all<{ id: string }>();
+    return json({
+        items: result.results,
+        next_after: result.results.at(-1)?.id ?? null,
+    });
+}
+
+async function replayRetained(payload: unknown, env: Env): Promise<Response> {
+    if (!payload || typeof payload !== 'object')
+        return json({ error: 'Invalid recovery receipt' }, 422);
+    const { id, checksum } = payload as Record<string, unknown>;
+    if (
+        typeof id !== 'string' ||
+        id.length < 1 ||
+        id.length > 100 ||
+        typeof checksum !== 'string' ||
+        !/^[a-f0-9]{64}$/.test(checksum)
+    )
+        return json(
+            { error: 'One exact receipt ID and checksum are required' },
+            422,
+        );
+    const replayed = await env.DB.prepare(
+        "UPDATE spool SET state = 'pending', lease_until = 0 WHERE id = ? AND checksum = ? AND state = 'acknowledged' AND raw IS NOT NULL AND retained_until > ? RETURNING id",
+    )
+        .bind(id, checksum, now())
+        .first();
+    if (replayed) return json({ id, replayed: true, state: 'pending' });
+    const current = await env.DB.prepare(
+        'SELECT checksum, state, raw IS NOT NULL AS has_payload FROM spool WHERE id = ?',
+    )
+        .bind(id)
+        .first<{ checksum: string; state: string; has_payload: number }>();
+    if (!current || current.checksum !== checksum)
+        return json({ error: 'Receipt mismatch' }, 409);
+    // An idempotent replay does not reset a live claim's lease.
+    if (current.state === 'pending' && current.has_payload)
+        return json({ id, replayed: true, state: 'pending' });
+    return json(
+        { error: 'The acknowledged payload recovery window has expired' },
+        410,
+    );
 }
 
 type DirectoryRecipient = { address: string; active: boolean };
@@ -356,6 +448,10 @@ export default {
             const payload = JSON.parse(raw);
             if (path === '/v1/directory')
                 return await replaceDirectory(payload, env);
+            if (path === '/v1/recovery')
+                return await recoveryInventory(payload, env);
+            if (path === '/v1/replay')
+                return await replayRetained(payload, env);
             if (path === '/v1/claim') {
                 const limit = Math.max(
                     1,
@@ -381,9 +477,19 @@ export default {
                 if (!record || record.checksum !== payload.checksum)
                     return json({ error: 'Receipt mismatch' }, 409);
                 await env.DB.prepare(
-                    "UPDATE spool SET state = 'acknowledged', raw = NULL, bytes = 512 WHERE id = ?",
+                    "UPDATE spool SET state = 'acknowledged', acknowledged_at = COALESCE(acknowledged_at, ?), retained_until = COALESCE(retained_until, ?), lease_until = 0 WHERE id = ? AND state = 'pending'",
                 )
-                    .bind(payload.id)
+                    .bind(
+                        now(),
+                        now() +
+                            boundedSeconds(
+                                env.ACK_RETENTION_SECONDS,
+                                86400,
+                                3600,
+                                86400,
+                            ),
+                        payload.id,
+                    )
                     .run();
                 return json({ acknowledged: true });
             }
@@ -405,6 +511,7 @@ export default {
         }
     },
     async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+        await purgeAcknowledged(env);
         const due = await env.DB.prepare(
             "SELECT id FROM spool WHERE state = 'pending' AND lease_until < ? LIMIT 1",
         )
@@ -424,7 +531,12 @@ export default {
             const response = await fetch(env.APP_URL + path, {
                 method: 'POST',
                 body,
-                signal: AbortSignal.timeout(15000),
+                // Render Free can take about a minute to wake. This bounded wait is
+                // below the Cron wall-time limit and happens only for durable work.
+                signal: AbortSignal.timeout(
+                    boundedSeconds(env.SYNC_TIMEOUT_SECONDS, 120, 60, 180) *
+                        1000,
+                ),
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Postroom-Time': timestamp,
@@ -436,6 +548,7 @@ export default {
                 },
             });
             ok = response.ok;
+            await response.body?.cancel();
         } catch {
             /* A sleeping host is not evidence of completed import. */
         }

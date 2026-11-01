@@ -8,6 +8,7 @@ use App\Models\Mailbox;
 use App\Models\SendIntent;
 use App\Models\User;
 use App\Services\AdminMailboxes;
+use App\Services\ImportIncidents;
 use App\Services\RecipientDirectory;
 use App\Services\UsageService;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ class AdminController extends Controller
             'addresses' => Address::all(), 'meters' => $usage->meters(),
             'directory' => $directory->status(), 'limits' => $administration->limits(),
             'deliveries' => SendIntent::select(['id', 'status', 'recipients', 'last_error', 'created_at'])->latest()->limit(30)->get(),
+            'importIncidents' => app(ImportIncidents::class)->summary(),
             'audits' => DB::table('audit_events')->latest('id')->limit(30)->get(), 'simulation' => config('postroom.provider') === 'mock',
             'returnMailbox' => $request->user()->mailboxes()->first()?->id]);
     }

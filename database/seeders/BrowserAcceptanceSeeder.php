@@ -24,6 +24,14 @@ class BrowserAcceptanceSeeder extends Seeder
         }
 
         DB::transaction(function () {
+            // Authentication UI cases use their own fixture identity so their
+            // deliberate failed logins cannot throttle mailbox regressions.
+            $signInUser = User::factory()->create([
+                'name' => 'Fictional Sign-in Reviewer', 'email' => 'signin@postroom.test',
+                'password' => 'postroom-local-only', 'role' => 'member', 'active' => true,
+            ]);
+            $signInMailbox = Mailbox::create(['name' => 'Sign-in Review', 'email' => $signInUser->email]);
+            $signInMailbox->users()->attach($signInUser->id, ['can_send' => false]);
             $mira = User::where('email', 'mira@postroom.test')->firstOrFail();
             $mailbox = Mailbox::firstOrCreate(['email' => 'acceptance-lab@postroom.test'], ['name' => 'Acceptance Lab']);
             $mailbox->users()->syncWithoutDetaching([$mira->id => ['can_send' => true]]);
@@ -69,6 +77,21 @@ class BrowserAcceptanceSeeder extends Seeder
                 'Fictional long-address details fixture. Reference: '.str_repeat('unbroken-reference-', 35),
                 ['thread_id' => 'acceptance-details', 'from_name' => 'Fictional international collaboration · Александра Петрова · 田中 由紀',
                     'from_email' => 'fictional.international.collaboration@long-sender-domain.example', 'to' => $to, 'cc' => $cc, 'created_at' => $start->subDays(6)]);
+
+            // A separate incoming MIME fixture exercises actual authorized
+            // downloads without changing the scroll or conversation queries.
+            $filename = 'fictional-acceptance-attachment-with-a-deliberately-long-filename-for-mobile-download-review.txt';
+            $attachment = "Fictional incoming attachment.\r\nBytes stay intact: caf\xE9.\r\n";
+            $body = 'Fictional incoming attachment fixture. Download the retained file to verify its original bytes.';
+            $raw = "From: Fictional Acceptance Sender <fictional.sender@example.net>\r\nTo: ".$mailbox->email
+                ."\r\nSubject: Acceptance incoming attachment download\r\nMessage-ID: <acceptance-incoming-attachment@postroom.test>\r\n"
+                ."MIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=acceptance-download-boundary\r\n\r\n"
+                ."--acceptance-download-boundary\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n".$body."\r\n"
+                ."--acceptance-download-boundary\r\nContent-Type: text/plain; charset=ISO-8859-1\r\n"
+                .'Content-Disposition: attachment; filename="'.$filename."\"\r\nContent-Transfer-Encoding: base64\r\n\r\n"
+                .chunk_split(base64_encode($attachment), 76, "\r\n")."--acceptance-download-boundary--\r\n";
+            $this->message($mailbox, 'incoming-attachment', 'Acceptance incoming attachment download', $body,
+                ['thread_id' => 'acceptance-incoming-attachment', 'raw_mime' => $raw, 'has_attachments' => true, 'created_at' => $start->subDays(7)]);
             $mailbox->update(['used_bytes' => Message::where('mailbox_id', $mailbox->id)->sum('logical_bytes')]);
         });
     }
@@ -79,7 +102,7 @@ class BrowserAcceptanceSeeder extends Seeder
         $fields = [...['thread_id' => 'acceptance-'.$id, 'from_name' => 'Fictional Acceptance Sender', 'from_email' => 'fictional.sender@example.net',
             'to' => [$mailbox->email], 'cc' => [], 'subject' => $subject, 'body_text' => $body, 'body_html' => null,
             'folder' => 'inbox', 'is_read' => true, 'starred' => false, 'labels' => [], 'has_attachments' => false], ...$overrides];
-        $raw = 'From: '.$fields['from_name'].' <'.$fields['from_email'].">\r\nTo: ".implode(', ', $fields['to'])
+        $raw = $fields['raw_mime'] ?? 'From: '.$fields['from_name'].' <'.$fields['from_email'].">\r\nTo: ".implode(', ', $fields['to'])
             ."\r\nCc: ".implode(', ', $fields['cc'])."\r\nSubject: $subject\r\nMessage-ID: <acceptance-$id@postroom.test>\r\nContent-Type: "
             .($fields['body_html'] ? 'text/html' : 'text/plain')."; charset=UTF-8\r\n\r\n".($fields['body_html'] ?? $body);
         $fields['raw_mime'] = $raw;
