@@ -1,0 +1,25 @@
+title = "WebMail secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Reviewed SHA-256 file provenance values, not credentials"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)docs/review/production-source\.json$''']
+regexes = ['''^[a-f0-9]{64}$''']
+
+[[allowlists]]
+description = "Explicitly fictional isolated test signing secret"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)tests/Feature/RecipientDirectoryTest\.php$''']
+regexes = ['''^fictional-ingress-secret-at-least-32-characters$''']
+
+[[allowlists]]
+description = "Deployment prose about owner billing and verification responsibilities"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)docs/DEPLOYMENT\.md$''']
+regexes = ['''^billing/verification$''']

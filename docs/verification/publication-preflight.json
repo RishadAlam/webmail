@@ -1,0 +1,106 @@
+{
+    "recorded_at_utc": "2026-11-01T11:16:02.089335+00:00",
+    "scope": "Fresh local publication preflight; providers mocked; no hosted CI result asserted here.",
+    "repository": "https://github.com/RishadAlam/webmail",
+    "visibility_verified": "public",
+    "private_vulnerability_reporting_verified": true,
+    "license": "MIT",
+    "implementation_commit": "70bf2a04a82c5265bae032797ca0e913051f4148",
+    "documentation_commit": "c81b3b3c885ee7ee6d89ba1c43b4fc6f0d9cbeca",
+    "php_suites": [
+        {
+            "command": "php artisan test --compact",
+            "database": "SQLite in memory",
+            "passed": 201,
+            "skipped": 16,
+            "assertions": 1045,
+            "exit_code": 0
+        },
+        {
+            "command": "docker compose exec -T -e APP_ENV=testing -e DB_CONNECTION=pgsql -e DB_DATABASE=postroom_test -e DB_URL= app php artisan test --compact",
+            "database": "PostgreSQL postroom_test (name verified before execution)",
+            "passed": 201,
+            "skipped": 16,
+            "assertions": 1045,
+            "exit_code": 0
+        }
+    ],
+    "worker": {
+        "command": "npm run test:worker",
+        "passed": 15,
+        "failed": 0,
+        "exit_code": 0,
+        "runtime": "local Miniflare/D1; not a deployed Worker"
+    },
+    "browsers": [
+        {
+            "engine": "chromium",
+            "command": "npm run test:e2e -- --reporter=line",
+            "passed": 31,
+            "failed": 0,
+            "exit_code": 0,
+            "reported_duration": "1.2m"
+        },
+        {
+            "engine": "firefox",
+            "command": "POSTROOM_BROWSER=firefox npm run test:e2e -- --reporter=line",
+            "passed": 31,
+            "failed": 0,
+            "exit_code": 0,
+            "reported_duration": "1.7m"
+        },
+        {
+            "engine": "webkit",
+            "command": "POSTROOM_BROWSER=webkit POSTROOM_WEBKIT_EXECUTABLE=/tmp/postroom-webkit.sh npm run test:e2e -- --reporter=line",
+            "passed": 31,
+            "failed": 0,
+            "exit_code": 0,
+            "reported_duration": "1.9m"
+        }
+    ],
+    "browser_total_passed": 93,
+    "static_commands": [
+        "vendor/bin/pint --test",
+        "vendor/bin/phpstan analyse --no-progress --debug",
+        "npm run check",
+        "npm run types:check",
+        "npm run types:worker",
+        "npm run build",
+        "actionlint .github/workflows/ci.yml",
+        "git diff --check"
+    ],
+    "dependency_audits": {
+        "composer audit --locked --no-interaction": "No security vulnerability advisories found.",
+        "npm audit --audit-level=low": "found 0 vulnerabilities"
+    },
+    "gitleaks": {
+        "version": "8.30.1",
+        "official_archive_sha256": "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb",
+        "release_checksum_verified": true,
+        "configuration": ".gitleaks.toml",
+        "default_rules_enabled": true,
+        "raw_existing_history_findings": 0,
+        "reviewed_pending_file_false_positives": 24,
+        "remaining_findings_after_narrow_exceptions": 0
+    },
+    "actionlint": {
+        "version": "1.7.12",
+        "official_archive_sha256": "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8",
+        "release_checksum_verified": true,
+        "exit_code": 0
+    },
+    "prior_evidence_preserved": {
+        "production_source_manifest": "docs/review/production-source.json",
+        "production_input_files_verified": 276,
+        "all_production_hashes_match": true,
+        "built_asset_manifest_hash_matches": true,
+        "original_review_screenshot_hashes_match": 39
+    },
+    "limitations": [
+        "No live provider or email-delivery test was performed.",
+        "No application hosting, DNS/routing, paid service, overage or keep-alive was activated.",
+        "Browser checks use Linux engines and viewport emulation, not physical devices.",
+        "Existing provisioning/reconciliation and production release gates remain in STATUS.md.",
+        "No search ranking or indexing guarantee is made."
+    ]
+}

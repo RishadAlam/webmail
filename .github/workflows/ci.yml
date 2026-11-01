@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: PHP, Worker and browser checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      POSTROOM_PROVIDER: mock
+      EXTERNAL_SENDING_ENABLED: 'false'
+      WRANGLER_SEND_METRICS: 'false'
+    services:
+      postgres:
+        image: postgres:17@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
+        env:
+          POSTGRES_DB: postroom_test
+          POSTGRES_USER: postroom
+          POSTGRES_PASSWORD: local-development-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postroom -d postroom_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Scan committed history for secrets
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/gitleaks"
+          curl --fail --silent --show-error --location \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz \
+            --output "$RUNNER_TEMP/gitleaks/gitleaks.tar.gz"
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  $RUNNER_TEMP/gitleaks/gitleaks.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/gitleaks/gitleaks.tar.gz" -C "$RUNNER_TEMP/gitleaks" gitleaks
+          "$RUNNER_TEMP/gitleaks/gitleaks" git . --log-opts=--all --redact=100 --no-banner
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.4'
+          extensions: mbstring, dom, xml, xmlwriter, pdo_sqlite, pdo_pgsql, zip
+          tools: composer:v2
+          coverage: none
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked dependencies and prepare an isolated environment
+        run: |
+          cp .env.example .env
+          composer install --no-interaction --prefer-dist --no-progress
+          php artisan key:generate --force
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Static checks
+        run: |
+          vendor/bin/pint --test
+          vendor/bin/phpstan analyse --no-progress
+          npm run check
+          npm run types:check
+          npm run types:worker
+      - name: PHP tests with SQLite
+        run: php artisan test --compact
+      - name: PHP tests with PostgreSQL
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: '5432'
+          DB_DATABASE: postroom_test
+          DB_USERNAME: postroom
+          DB_PASSWORD: local-development-only
+          DB_URL: ''
+        run: php artisan test --compact
+      - name: Worker tests with local D1
+        run: npm run test:worker
+      - name: Dependency vulnerability checks
+        run: |
+          composer audit --locked --no-interaction
+          npm audit --audit-level=low
+      - name: Install browser engines and system libraries
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Chromium acceptance checks
+        run: npm run test:e2e -- --reporter=line
+      - name: Firefox acceptance checks
+        env:
+          POSTROOM_BROWSER: firefox
+        run: npm run test:e2e -- --reporter=line
+      - name: WebKit acceptance checks
+        env:
+          POSTROOM_BROWSER: webkit
+        run: npm run test:e2e -- --reporter=line
