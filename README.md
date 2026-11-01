@@ -37,10 +37,12 @@ php artisan migrate
 php artisan db:seed --class=DemoSeeder
 npm ci
 npm run build
-php artisan serve --host=127.0.0.1 --port=8000
+php artisan serve --no-reload --host=127.0.0.1 --port=8000
 ```
 
 SQLite is only a local convenience. Production startup refuses non-PostgreSQL storage. `npm run dev` is available for development; browser/security evidence uses the built assets and the normal CSP. No paid editor extension or external font service is needed.
+
+The local and test servers use `--no-reload` so Laravel preserves inherited database and security settings when starting PHP. Restart the server after changing environment configuration; PHP source changes still apply on the next request. Without this flag, the server can silently fall back to `.env` instead of the Compose or Playwright database.
 
 ## Verification
 
@@ -61,13 +63,16 @@ POSTROOM_BROWSER=webkit npm run test:e2e
 
 Playwright owns only `storage/e2e.sqlite`, seeds fictional messages, starts port 8010, and applies a deliberately small two-recipient daily test cap. It does not reset the normal application database. Browsers may require OS libraries (`npx playwright install-deps`); physical devices remain a separate gate. Traces and authentication state are ignored by source control. Screenshots in `docs/ui-evidence` contain fictional data only.
 
-For PostgreSQL checks, first create **dedicated disposable** databases `postroom_test` and `postroom_concurrency` in the local container. The concurrency script refuses any other database name or environment:
+For PostgreSQL checks, first create **dedicated disposable** databases `postroom_test`, `postroom_concurrency`, and `postroom_auth_e2e` in the local container. The concurrency and HTTP authentication scripts each enforce their own database name and testing environment:
 
 ```sh
 docker compose exec -T postgres createdb -U postroom postroom_test
 docker compose exec -T postgres createdb -U postroom postroom_concurrency
+docker compose exec -T postgres createdb -U postroom postroom_auth_e2e
 docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_test app php artisan test
 docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_concurrency app php scripts/verify-concurrency.php
+docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_auth_e2e app php artisan migrate --force
+docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_auth_e2e app php scripts/verify-auth-runtime.php
 ```
 
 ## Implemented boundaries

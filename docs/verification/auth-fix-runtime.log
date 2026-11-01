@@ -1,0 +1,16 @@
+GET /login -> 200 
+GET /admin -> 302 /login
+POST /login -> 302 /two-factor-challenge
+GET /admin -> 302 /login
+POST /two-factor-challenge -> 302 /admin
+GET /admin -> 200 
+GET /admin -> 200 
+POST /logout -> 302 
+GET /admin -> 302 /login
+{
+    "result": "passed",
+    "database": "isolated PostgreSQL",
+    "password_then_mfa": true,
+    "admin_after_fresh_request": true,
+    "logout_revokes_access": true
+}

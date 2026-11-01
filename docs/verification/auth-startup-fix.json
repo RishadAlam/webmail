@@ -1,0 +1,60 @@
+{
+    "recorded_at_utc": "2026-11-01T08:21:03Z",
+    "scope": "Local server environment and owner MFA login regression",
+    "initial_milestone_evidence": "run-manifest.json",
+    "root_cause": "Docker artisan serve filtered inherited environment; its HTTP child fell back to .env SQLite while CLI checks used PostgreSQL.",
+    "fix": "Explicit --no-reload for Docker, direct local and Playwright servers; no authentication-policy changes.",
+    "runtime_regression": {
+        "command": "docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_auth_e2e app php scripts/verify-auth-runtime.php",
+        "before_fix": "Failed: password request did not reach MFA for the PostgreSQL-only fixture.",
+        "after_fix": "Passed: password, MFA, fresh-request admin access, logout revocation.",
+        "exit_code": 0,
+        "log": "auth-fix-runtime.log"
+    },
+    "running_preview": {
+        "url": "http://localhost:8082",
+        "app_rebuilt_and_restarted": true,
+        "database_reset": false,
+        "fresh_http_session_password_mfa_admin_logout": "passed",
+        "public_demo_recovery_code_consumed": false,
+        "user_existing_browser_session_operated": false
+    },
+    "server_sqlite": {
+        "command": "php artisan test",
+        "passed": 55,
+        "skipped": 16,
+        "assertions": 233,
+        "duration_ms": 4348,
+        "exit_code": 0
+    },
+    "server_postgresql": {
+        "command": "docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_test app php artisan test",
+        "passed": 55,
+        "skipped": 16,
+        "assertions": 233,
+        "duration_seconds": 4.04,
+        "exit_code": 0
+    },
+    "playwright": {
+        "chromium": { "passed": 13, "duration_seconds": 43.2, "exit_code": 0 },
+        "firefox": {
+            "passed": 13,
+            "duration_seconds": 57.4,
+            "exit_code": 0,
+            "log": "auth-fix-firefox.log"
+        },
+        "webkit": {
+            "passed": 13,
+            "duration_seconds": 50.2,
+            "exit_code": 0,
+            "log": "auth-fix-webkit.log"
+        },
+        "database": "storage/e2e.sqlite",
+        "provider": "deterministic mock",
+        "axe": "zero violations in asserted states"
+    },
+    "phpstan": { "errors": 0, "exit_code": 0 },
+    "pint": { "result": "passed", "exit_code": 0 },
+    "live_provider_tests": "not run",
+    "physical_device_tests": "not run"
+}
