@@ -13,6 +13,7 @@ return [
     'usage_ttl' => 300,
     'resend_key' => env('RESEND_SENDING_KEY'),
     'resend_management_key' => env('RESEND_MANAGEMENT_KEY'),
+    'cloudflare_token' => env('CLOUDFLARE_API_TOKEN'),
     'worker_url' => env('INGRESS_WORKER_URL'),
     'worker_secret' => env('INGRESS_SECRET'),
     'sending_enabled' => (bool) env('EXTERNAL_SENDING_ENABLED', false),

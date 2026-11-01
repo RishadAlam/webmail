@@ -2,6 +2,7 @@
 
 namespace App\Providers\Mail;
 
+use App\Services\ConnectionConfiguration;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
@@ -11,11 +12,12 @@ class ResendProvider implements OutboundMailProvider, UsageProvider
      * @return array<array-key, mixed> */
     public function send(array $payload, string $idempotencyKey): array
     {
-        if (! config('postroom.sending_enabled') || ! config('postroom.resend_key')) {
+        $key = app(ConnectionConfiguration::class)->value('resend_key');
+        if (! config('postroom.sending_enabled') || ! $key) {
             return ['status' => 'failed', 'id' => null, 'error' => 'External sending is disabled. Ask the owner to complete provider verification.'];
         }
         try {
-            $response = Http::withToken(config('postroom.resend_key'))->acceptJson()->timeout(15)
+            $response = Http::withToken($key)->acceptJson()->timeout(15)->withoutRedirecting()
                 ->withHeaders(['Idempotency-Key' => $idempotencyKey])->post('https://api.resend.com/emails', $payload);
             if ($response->successful() && is_string($response->json('id'))) {
                 return ['status' => 'accepted', 'id' => $response->json('id'), 'error' => null];
@@ -30,12 +32,13 @@ class ResendProvider implements OutboundMailProvider, UsageProvider
     }
 
     /**  @return array<array-key, mixed> */
-    public function usage(): array
+    public function usage(?string $managementKey = null): array
     {
-        if (! config('postroom.resend_management_key')) {
+        $key = $managementKey ?? app(ConnectionConfiguration::class)->value('resend_management_key');
+        if (! $key) {
             throw new \RuntimeException('A full-access Resend management key is required for usage.');
         }
-        $response = Http::withToken(config('postroom.resend_management_key'))->acceptJson()->timeout(10)->get('https://api.resend.com/usage');
+        $response = Http::withToken($key)->acceptJson()->timeout(10)->withoutRedirecting()->get('https://api.resend.com/usage');
         if (! $response->successful()) {
             throw new \RuntimeException('Usage unavailable (HTTP '.$response->status().').');
         }

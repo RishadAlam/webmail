@@ -11,5 +11,8 @@
             "database_id": "REPLACE_AFTER_APPROVED_BOOTSTRAP",
         },
     ],
-    "vars": { "APP_URL": "https://REPLACE_WITH_VERIFIED_APPLICATION_HOST" },
+    "vars": {
+        "APP_URL": "https://REPLACE_WITH_VERIFIED_APPLICATION_HOST",
+        "MAIL_DOMAIN": "REPLACE_WITH_VERIFIED_MAIL_DOMAIN",
+    },
 }

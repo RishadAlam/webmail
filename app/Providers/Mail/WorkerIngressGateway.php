@@ -2,17 +2,18 @@
 
 namespace App\Providers\Mail;
 
+use App\Services\ConnectionConfiguration;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
-class WorkerIngressGateway implements IngressGateway
+class WorkerIngressGateway implements IngressGateway, RecipientDirectoryGateway
 {
     /**  @param array<string, mixed> $payload
      * @return array<array-key, mixed> */
     private function request(string $path, array $payload): array
     {
-        $url = config('postroom.worker_url');
-        $secret = config('postroom.worker_secret');
+        $url = app(ConnectionConfiguration::class)->workerUrl();
+        $secret = app(ConnectionConfiguration::class)->value('worker_secret');
         if (! $url || ! str_starts_with($url, 'https://') || ! $secret) {
             throw new \RuntimeException('Ingress connection is not configured.');
         }
@@ -20,7 +21,7 @@ class WorkerIngressGateway implements IngressGateway
         $timestamp = (string) time();
         $nonce = (string) Str::uuid();
         $signature = hash_hmac('sha256', "$timestamp\n$nonce\nPOST\n$path\n$body", $secret);
-        $response = Http::timeout(15)->withHeaders(['X-Postroom-Time' => $timestamp, 'X-Postroom-Nonce' => $nonce, 'X-Postroom-Signature' => $signature])
+        $response = Http::timeout(15)->withoutRedirecting()->withHeaders(['X-Postroom-Time' => $timestamp, 'X-Postroom-Nonce' => $nonce, 'X-Postroom-Signature' => $signature])
             ->withBody($body, 'application/json')->post(rtrim($url, '/').$path);
         if (! $response->successful()) {
             throw new \RuntimeException('Ingress request failed (HTTP '.$response->status().').');
@@ -38,5 +39,22 @@ class WorkerIngressGateway implements IngressGateway
     public function acknowledge(string $id, string $checksum): void
     {
         $this->request('/v1/ack', compact('id', 'checksum'));
+    }
+
+    public function replaceDirectory(array $snapshot): array
+    {
+        return $this->request('/v1/directory', $snapshot);
+    }
+
+    public function simulated(): bool
+    {
+        return false;
+    }
+
+    public function directoryTarget(): string
+    {
+        // Status remains available for repairing an invalid bootstrap URL;
+        // request() validates the origin before any network operation.
+        return hash('sha256', rtrim(app(ConnectionConfiguration::class)->value('worker_url') ?? '', '/'));
     }
 }

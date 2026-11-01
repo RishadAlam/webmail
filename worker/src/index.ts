@@ -3,8 +3,11 @@ export interface Env {
     INGRESS_SECRET: string;
     RESEND_WEBHOOK_SECRET: string;
     APP_URL: string;
+    MAIL_DOMAIN: string;
 }
 const MAX = 262144;
+const MAX_DIRECTORY_BYTES = 32768;
+class PayloadTooLarge extends Error {}
 const encoder = new TextEncoder();
 const now = () => Math.floor(Date.now() / 1000);
 const hex = (data: ArrayBuffer) =>
@@ -35,7 +38,7 @@ async function bounded(
         size += value.length;
         if (size > max) {
             await reader.cancel();
-            throw new Error('Message exceeds 256 KiB');
+            throw new PayloadTooLarge('Payload exceeds the permitted size');
         }
         chunks.push(value);
     }
@@ -120,7 +123,7 @@ export async function receive(
     } catch {
         // No success is returned before durable storage. Cloudflare setReject is permanent.
         message.setReject(
-            'Postroom cannot safely store this message. Contact the recipient another way.',
+            'WebMail cannot safely store this message. Contact the recipient another way.',
         );
     }
 }
@@ -129,6 +132,102 @@ function json(data: unknown, status = 200): Response {
         status,
         headers: { 'Cache-Control': 'no-store' },
     });
+}
+
+type DirectoryRecipient = { address: string; active: boolean };
+type DirectoryState = { revision: number; checksum: string; count: number };
+
+async function replaceDirectory(payload: unknown, env: Env): Promise<Response> {
+    const domain = env.MAIL_DOMAIN?.toLowerCase();
+    if (
+        !domain ||
+        domain.length > 253 ||
+        !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(
+            domain,
+        )
+    )
+        return json({ error: 'The receiving domain is not configured' }, 503);
+    if (!payload || typeof payload !== 'object')
+        return json({ error: 'Invalid recipient directory' }, 422);
+    const snapshot = payload as Record<string, unknown>;
+    if (
+        !Number.isSafeInteger(snapshot.revision) ||
+        (snapshot.revision as number) < 1 ||
+        typeof snapshot.checksum !== 'string' ||
+        !/^[a-f0-9]{64}$/.test(snapshot.checksum) ||
+        !Array.isArray(snapshot.recipients) ||
+        snapshot.recipients.length > 100
+    )
+        return json({ error: 'Invalid recipient directory' }, 422);
+    const recipients: DirectoryRecipient[] = [];
+    const seen = new Set<string>();
+    for (const entry of snapshot.recipients) {
+        if (
+            !entry ||
+            typeof entry !== 'object' ||
+            typeof entry.address !== 'string' ||
+            typeof entry.active !== 'boolean' ||
+            entry.address.length > 254 ||
+            !/^[a-z0-9][a-z0-9._-]{0,63}@/.test(entry.address) ||
+            entry.address.split('@').length !== 2 ||
+            entry.address.split('@')[1] !== domain ||
+            seen.has(entry.address)
+        )
+            return json(
+                {
+                    error: 'Only explicit addresses on the configured receiving domain are allowed',
+                },
+                422,
+            );
+        seen.add(entry.address);
+        recipients.push({ address: entry.address, active: entry.active });
+    }
+    recipients.sort((a, b) =>
+        a.address < b.address ? -1 : a.address > b.address ? 1 : 0,
+    );
+    const canonical = JSON.stringify(recipients);
+    const checksum = hex(
+        await crypto.subtle.digest('SHA-256', encoder.encode(canonical)),
+    );
+    if (checksum !== snapshot.checksum)
+        return json({ error: 'Recipient directory checksum mismatch' }, 422);
+    const revision = snapshot.revision as number;
+    // D1 batch is transactional. Every mutation is gated on the same revision/checksum,
+    // so a stale or conflicting request cannot alter any recipient even when requests race.
+    // json_each keeps a 100-address snapshot within the Free plan's query/parameter bounds.
+    const results = await env.DB.batch<DirectoryState>([
+        env.DB.prepare(
+            'UPDATE recipient_directory_state SET revision = ?, checksum = ?, count = ?, updated_at = ? WHERE id = 1 AND (revision < ? OR (revision = ? AND checksum = ?))',
+        ).bind(
+            revision,
+            checksum,
+            recipients.length,
+            now(),
+            revision,
+            revision,
+            checksum,
+        ),
+        env.DB.prepare(
+            'DELETE FROM recipients WHERE EXISTS (SELECT 1 FROM recipient_directory_state WHERE id = 1 AND revision = ? AND checksum = ?)',
+        ).bind(revision, checksum),
+        env.DB.prepare(
+            "INSERT INTO recipients(address, active, version) SELECT json_extract(value, '$.address'), json_extract(value, '$.active'), ? FROM json_each(?) WHERE EXISTS (SELECT 1 FROM recipient_directory_state WHERE id = 1 AND revision = ? AND checksum = ?)",
+        ).bind(revision, canonical, revision, checksum),
+        env.DB.prepare(
+            'SELECT revision, checksum, count FROM recipient_directory_state WHERE id = 1',
+        ),
+    ]);
+    const committed = results[3].results[0];
+    if (
+        !committed ||
+        committed.revision !== revision ||
+        committed.checksum !== checksum
+    )
+        return json(
+            { error: 'Stale or conflicting recipient directory revision' },
+            409,
+        );
+    return json(committed);
 }
 async function authenticate(
     request: Request,
@@ -243,15 +342,20 @@ export default {
     email: receive,
     async fetch(request: Request, env: Env): Promise<Response> {
         if (request.method !== 'POST') return json({ error: 'Not found' }, 404);
+        const path = new URL(request.url).pathname;
         try {
-            const path = new URL(request.url).pathname,
-                data = await bounded(request.body),
+            const data = await bounded(
+                    request.body,
+                    path === '/v1/directory' ? MAX_DIRECTORY_BYTES : MAX,
+                ),
                 raw = new TextDecoder().decode(data);
             if (path === '/webhooks/resend')
                 return await webhook(request, env, data);
             if (!(await authenticate(request, env, raw)))
                 return json({ error: 'Unauthorized' }, 401);
             const payload = JSON.parse(raw);
+            if (path === '/v1/directory')
+                return await replaceDirectory(payload, env);
             if (path === '/v1/claim') {
                 const limit = Math.max(
                     1,
@@ -284,7 +388,14 @@ export default {
                 return json({ acknowledged: true });
             }
             return json({ error: 'Not found' }, 404);
-        } catch {
+        } catch (error) {
+            if (path === '/v1/directory' && error instanceof PayloadTooLarge)
+                return json(
+                    { error: 'Recipient directory exceeds 32 KiB' },
+                    413,
+                );
+            if (path === '/v1/directory' && error instanceof SyntaxError)
+                return json({ error: 'Invalid recipient directory' }, 422);
             return json(
                 {
                     error: 'Storage or request failed; accepted items are retained',

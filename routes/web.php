@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminMailboxController;
 use App\Http\Controllers\DraftController;
 use App\Http\Controllers\InternalSyncController;
 use App\Http\Controllers\MailController;
+use App\Http\Controllers\ProviderConnectionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -25,8 +27,23 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/drafts/{draft}', [DraftController::class, 'delete']);
     Route::post('/drafts/{draft}/send', [DraftController::class, 'send'])->middleware('throttle:10,1,send');
     Route::get('/admin', [AdminController::class, 'index']);
+    Route::get('/admin/connection-settings', [AdminController::class, 'index'])->middleware('password.confirm');
+    Route::post('/admin/directory/sync', [AdminController::class, 'syncDirectory'])->middleware('throttle:2,1,admin-directory');
     Route::post('/admin/people', [AdminController::class, 'createUser'])->middleware('throttle:10,1,admin-create');
     Route::patch('/admin/people/{user}', [AdminController::class, 'toggleUser'])->middleware('throttle:10,1,admin-toggle');
+    Route::post('/admin/people/{user}/revoke-sessions', [AdminController::class, 'revokeSessions'])->middleware('throttle:10,1,admin-revoke');
+    Route::put('/admin/people/{user}/password', [AdminController::class, 'resetPassword'])->middleware('throttle:10,1,admin-reset');
+    Route::post('/admin/mailboxes', [AdminMailboxController::class, 'store'])->middleware('throttle:10,1,admin-mailbox');
+    Route::patch('/admin/mailboxes/{mailbox}/quota', [AdminMailboxController::class, 'quota'])->middleware('throttle:10,1,admin-mailbox');
+    Route::post('/admin/mailboxes/{mailbox}/aliases', [AdminMailboxController::class, 'addAlias'])->middleware('throttle:10,1,admin-mailbox');
+    Route::patch('/admin/mailboxes/{mailbox}/aliases/{address}', [AdminMailboxController::class, 'updateAlias'])->middleware('throttle:10,1,admin-mailbox');
+    Route::put('/admin/mailboxes/{mailbox}/members/{user}', [AdminMailboxController::class, 'membership'])->middleware('throttle:10,1,admin-mailbox');
+    Route::get('/admin/connections', [ProviderConnectionController::class, 'index']);
+    Route::middleware(['password.confirm', 'throttle:10,1,admin-connections'])->group(function () {
+        Route::put('/admin/connections', [ProviderConnectionController::class, 'update']);
+        Route::delete('/admin/connections/{field}', [ProviderConnectionController::class, 'destroy']);
+        Route::post('/admin/connections/{connection}/test', [ProviderConnectionController::class, 'test']);
+    });
 });
 
 require __DIR__.'/settings.php';

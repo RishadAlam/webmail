@@ -35,6 +35,7 @@ beforeEach(async () => {
         INGRESS_SECRET: 'local-test-signing-secret-at-least-32-characters',
         RESEND_WEBHOOK_SECRET: 'whsec_' + btoa('synthetic-webhook-secret'),
         APP_URL: 'https://postroom.example',
+        MAIL_DOMAIN: 'postroom.test',
     };
 });
 afterEach(async () => {
@@ -83,6 +84,233 @@ async function request(
         env,
     );
 }
+
+async function directorySnapshot(
+    revision: number,
+    recipients: { address: string; active: boolean }[],
+) {
+    const canonical = [...recipients].sort((a, b) =>
+        a.address < b.address ? -1 : a.address > b.address ? 1 : 0,
+    );
+    const checksum = Array.from(
+        new Uint8Array(
+            await crypto.subtle.digest(
+                'SHA-256',
+                new TextEncoder().encode(JSON.stringify(canonical)),
+            ),
+        ),
+        (byte) => byte.toString(16).padStart(2, '0'),
+    ).join('');
+    return { revision, checksum, recipients: canonical };
+}
+
+void test('an unknown recipient becomes routable only after a signed directory snapshot and disabled addresses reject', async () => {
+    assert.match(
+        (await sendMail('Before sync', 'sam@postroom.test'))!,
+        /recipient/i,
+    );
+    const snapshot = await directorySnapshot(1, [
+        { address: 'sam@postroom.test', active: true },
+        { address: 'mira@postroom.test', active: false },
+    ]);
+    const response = await request('/v1/directory', snapshot);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+        revision: 1,
+        checksum: snapshot.checksum,
+        count: 2,
+    });
+    assert.equal(await sendMail('After sync', 'sam@postroom.test'), undefined);
+    assert.match(
+        (await sendMail('Disabled', 'mira@postroom.test'))!,
+        /recipient/i,
+    );
+    assert.equal(
+        (
+            await env.DB.prepare(
+                'SELECT active FROM recipients WHERE address = ?',
+            )
+                .bind('mira@postroom.test')
+                .first()
+        ).active,
+        0,
+    );
+});
+
+void test('directory retries are idempotent and stale, conflicting and replayed snapshots cannot overwrite a newer revision', async () => {
+    const first = await directorySnapshot(1, [
+        { address: 'sam@postroom.test', active: true },
+    ]);
+    assert.equal((await request('/v1/directory', first)).status, 200);
+    assert.equal((await request('/v1/directory', first)).status, 200);
+    const conflict = await directorySnapshot(1, [
+        { address: 'sam@postroom.test', active: false },
+    ]);
+    assert.equal((await request('/v1/directory', conflict)).status, 409);
+    const newer = await directorySnapshot(2, [
+        { address: 'sam@postroom.test', active: false },
+    ]);
+    const nonce = crypto.randomUUID();
+    assert.equal((await request('/v1/directory', newer, nonce)).status, 200);
+    assert.equal((await request('/v1/directory', newer, nonce)).status, 401);
+    assert.equal((await request('/v1/directory', first)).status, 409);
+    assert.match(
+        (await sendMail('Still disabled', 'sam@postroom.test'))!,
+        /recipient/i,
+    );
+    assert.equal(
+        (
+            await env.DB.prepare(
+                'SELECT revision FROM recipient_directory_state',
+            ).first()
+        ).revision,
+        2,
+    );
+});
+
+void test('directory validation rejects foreign domains, duplicates, too many entries and a false content checksum', async () => {
+    const invalid = [
+        await directorySnapshot(1, [
+            { address: 'sam@foreign.test', active: true },
+        ]),
+        await directorySnapshot(1, [
+            { address: 'sam@postroom.test', active: true },
+            { address: 'sam@postroom.test', active: false },
+        ]),
+        await directorySnapshot(
+            1,
+            Array.from({ length: 101 }, (_, i) => ({
+                address: `person${i}@postroom.test`,
+                active: true,
+            })),
+        ),
+        {
+            ...(await directorySnapshot(1, [
+                { address: 'sam@postroom.test', active: true },
+            ])),
+            checksum: '0'.repeat(64),
+        },
+    ];
+    for (const snapshot of invalid) {
+        assert.equal(
+            (
+                await request('/v1/directory', {
+                    ...snapshot,
+                    domain: 'foreign.test',
+                })
+            ).status,
+            422,
+        );
+    }
+    assert.equal(
+        (await env.DB.prepare('SELECT count(*) AS n FROM recipients').first())
+            .n,
+        1,
+    );
+    assert.equal(
+        (await request('/v1/directory', { padding: 'x'.repeat(32769) })).status,
+        413,
+    );
+});
+
+void test('a failed atomic directory replacement preserves its prior directory revision and accepted spool', async () => {
+    const first = await directorySnapshot(1, [
+        { address: 'mira@postroom.test', active: true },
+    ]);
+    assert.equal((await request('/v1/directory', first)).status, 200);
+    assert.equal(await sendMail('Already accepted'), undefined);
+    const accepted = await env.DB.prepare('SELECT * FROM spool').first();
+    await env.DB.prepare(
+        "CREATE TRIGGER fail_directory_insert BEFORE INSERT ON recipients WHEN NEW.address = 'blocked@postroom.test' BEGIN SELECT RAISE(ABORT, 'simulated storage failure'); END",
+    ).run();
+    const next = await directorySnapshot(2, [
+        { address: 'blocked@postroom.test', active: true },
+    ]);
+    assert.equal((await request('/v1/directory', next)).status, 503);
+    assert.deepEqual(
+        (
+            await env.DB.prepare(
+                'SELECT address, active, version FROM recipients',
+            ).all()
+        ).results,
+        [{ address: 'mira@postroom.test', active: 1, version: 1 }],
+    );
+    assert.equal(
+        (
+            await env.DB.prepare(
+                'SELECT revision FROM recipient_directory_state',
+            ).first()
+        ).revision,
+        1,
+    );
+    assert.deepEqual(
+        await env.DB.prepare('SELECT * FROM spool').first(),
+        accepted,
+    );
+});
+
+void test('concurrent directory snapshots cannot regress the committed revision', async () => {
+    const high = await directorySnapshot(3, [
+        { address: 'new@postroom.test', active: true },
+    ]);
+    const low = await directorySnapshot(2, [
+        { address: 'old@postroom.test', active: true },
+    ]);
+    const responses = await Promise.all([
+        request('/v1/directory', high),
+        request('/v1/directory', low),
+    ]);
+    assert.equal(responses[0].status, 200);
+    assert.ok([200, 409].includes(responses[1].status));
+    assert.deepEqual(
+        (await env.DB.prepare('SELECT address FROM recipients').all()).results,
+        [{ address: 'new@postroom.test' }],
+    );
+    assert.equal(
+        (
+            await env.DB.prepare(
+                'SELECT revision FROM recipient_directory_state',
+            ).first()
+        ).revision,
+        3,
+    );
+});
+
+void test('the full 100-address allowance and an empty replacement are bounded and preserve accepted mail', async () => {
+    const full = await directorySnapshot(
+        1,
+        Array.from({ length: 100 }, (_, i) => ({
+            address: `person${i}@postroom.test`,
+            active: true,
+        })),
+    );
+    assert.equal((await request('/v1/directory', full)).status, 200);
+    assert.equal(
+        (await env.DB.prepare('SELECT count(*) AS n FROM recipients').first())
+            .n,
+        100,
+    );
+    assert.equal(
+        await sendMail('Accepted before removal', 'person0@postroom.test'),
+        undefined,
+    );
+    const accepted = await env.DB.prepare('SELECT * FROM spool').first();
+    const empty = await directorySnapshot(2, []);
+    assert.equal((await request('/v1/directory', empty)).status, 200);
+    assert.equal(
+        (await env.DB.prepare('SELECT count(*) AS n FROM recipients').first())
+            .n,
+        0,
+    );
+    assert.match(
+        (await sendMail('After removal', 'person0@postroom.test'))!,
+        /recipient/i,
+    );
+    assert.deepEqual(
+        await env.DB.prepare('SELECT * FROM spool').first(),
+        accepted,
+    );
+});
 
 void test('acceptance stores exact MIME in D1 while PHP is absent', async () => {
     assert.equal(await sendMail(), undefined);

@@ -1,5 +1,9 @@
 CREATE TABLE recipients (address TEXT PRIMARY KEY, active INTEGER NOT NULL, version INTEGER NOT NULL);
 -- statement
+CREATE TABLE recipient_directory_state (id INTEGER PRIMARY KEY CHECK (id = 1), revision INTEGER NOT NULL DEFAULT 0, checksum TEXT NOT NULL DEFAULT '', count INTEGER NOT NULL DEFAULT 0, updated_at INTEGER);
+-- statement
+INSERT INTO recipient_directory_state(id) VALUES (1);
+-- statement
 CREATE TABLE counters (id INTEGER PRIMARY KEY, used INTEGER NOT NULL DEFAULT 0, budget INTEGER NOT NULL DEFAULT 52428800);
 -- statement
 INSERT INTO counters(id) VALUES (1);
