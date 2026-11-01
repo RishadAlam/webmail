@@ -6,6 +6,7 @@ use App\Models\Address;
 use App\Models\Draft;
 use App\Models\Mailbox;
 use App\Models\Message;
+use App\Models\User;
 use App\Services\ImportService;
 use App\Services\SafeMail;
 use Illuminate\Http\Request;
@@ -25,8 +26,8 @@ class MailController extends Controller
         }
         Gate::authorize('view', $mailbox);
         $request->validate(['folder' => 'sometimes|in:inbox,starred,sent,drafts,archive,spam,trash,all', 'q' => 'sometimes|nullable|string|max:200']);
-        $folder = $request->string('folder', 'inbox')->toString();
         $q = trim((string) $request->query('q', ''));
+        $folder = $request->string('folder', $q !== '' ? 'all' : 'inbox')->toString();
         $unread = $request->boolean('unread');
         $query = Message::where('mailbox_id', $mailbox->id);
         if ($folder === 'starred') {
@@ -40,22 +41,27 @@ class MailController extends Controller
             $query->where('is_read', false);
         }
         if ($q !== '') {
-            $query->where(fn ($query) => $query->whereLike('subject', '%'.mb_substr($q, 0, 200).'%')->orWhereLike('from_email', '%'.mb_substr($q, 0, 200).'%')->orWhereLike('from_name', '%'.mb_substr($q, 0, 200).'%'));
+            $pattern = '%'.$q.'%';
+            $query->where(fn ($query) => $query->whereLike('subject', $pattern)->orWhereLike('from_email', $pattern)->orWhereLike('from_name', $pattern)
+                ->orWhereLike(DB::raw('CAST("to" AS TEXT)'), $pattern)->orWhereLike(DB::raw('CAST(cc AS TEXT)'), $pattern));
         }
         $page = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(30)->withQueryString();
         $conversation = null;
         if ($thread) {
-            $items = Message::where('mailbox_id', $mailbox->id)->where('thread_id', $thread)->orderBy('created_at')->get();
+            $threadPage = Message::where('mailbox_id', $mailbox->id)->where('thread_id', $thread)->orderByDesc('created_at')->orderByDesc('id')->paginate(30, ['*'], 'thread_page')->withQueryString();
+            $items = $threadPage->getCollection()->reverse()->values();
             abort_if($items->isEmpty(), 404);
             Message::whereIn('id', $items->pluck('id'))->where('is_read', false)->update(['is_read' => true, 'version' => DB::raw('version + 1')]);
-            $conversation = ['id' => $thread, 'subject' => $items->first()->subject, 'messages' => $items->map(fn ($m) => [...$m->toArray(), 'has_html' => (bool) $m->body_html])];
+            $conversation = ['id' => $thread, 'subject' => $items->first()->subject,
+                'messages' => $items->map(fn ($m) => [...$m->toArray(), 'is_read' => true, 'has_html' => (bool) $m->body_html]),
+                'pagination' => ['total' => $threadPage->total(), 'older' => $threadPage->nextPageUrl(), 'newer' => $threadPage->previousPageUrl()]];
         }
         $counts = Message::where('mailbox_id', $mailbox->id)->selectRaw('folder, count(*) as total')->groupBy('folder')->pluck('total', 'folder');
         $counts['unread'] = Message::where('mailbox_id', $mailbox->id)->where('folder', 'inbox')->where('is_read', false)->count();
         $drafts = Draft::where('user_id', $request->user()->id)->where('mailbox_id', $mailbox->id)->whereNotIn('status', ['accepted', 'delivered'])->orderByDesc('updated_at')->get();
         $counts['drafts'] = $drafts->count();
 
-        return Inertia::render('mail', ['mailbox' => $mailbox, 'mailboxes' => $boxes, 'messages' => $page->items(), 'thread' => $conversation,
+        return Inertia::render('mail', ['mailbox' => $mailbox, 'mailboxes' => $boxes, 'messages' => $page->getCollection()->map(fn ($message) => [...$message->toArray(), 'body_text' => mb_substr($message->body_text ?? '', 0, 240)]), 'thread' => $conversation,
             'drafts' => $drafts, 'identities' => Address::where('mailbox_id', $mailbox->id)->where('active', true)->pluck('email'), 'counts' => $counts,
             'filters' => ['folder' => $folder, 'q' => $q, 'unread' => $unread, 'page' => $page->currentPage()],
             'pagination' => ['from' => $page->firstItem(), 'to' => $page->lastItem(), 'total' => $page->total(), 'next' => $page->nextPageUrl(), 'prev' => $page->previousPageUrl()],
@@ -67,8 +73,18 @@ class MailController extends Controller
         Gate::authorize('view', Mailbox::findOrFail($message->mailbox_id));
         $body = $safe->html($message->body_html ?? '<p>'.e($message->body_text).'</p>');
 
-        return response('<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><style>body{font:16px/1.65 system-ui,sans-serif;color:#202124;margin:16px;overflow-wrap:anywhere}table{max-width:100%}pre{white-space:pre-wrap}a{color:#0b57d0}</style><body>'.$body.'</body></html>')
+        return response('<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><style>body{font:16px/1.65 system-ui,sans-serif;color:#202124;margin:16px;overflow-wrap:anywhere}table{border-collapse:collapse;max-width:none}td,th{min-width:8rem;padding:.4rem;vertical-align:top}pre{white-space:pre-wrap}a{color:#0b57d0}</style><body>'.$body.'</body></html>')
             ->header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox allow-popups allow-popups-to-escape-sandbox; base-uri 'none'; form-action 'none'");
+    }
+
+    public function original(Request $request, Message $message): mixed
+    {
+        Gate::authorize('view', Mailbox::findOrFail($message->mailbox_id));
+        DB::table('audit_events')->insert(['user_id' => $request->user()->id, 'action' => 'message.exported', 'target' => (string) $message->id, 'created_at' => now(), 'updated_at' => now()]);
+
+        return response($message->raw_mime)->header('Content-Type', 'message/rfc822')
+            ->header('Content-Disposition', 'attachment; filename="message-'.$message->id.'.eml"')
+            ->header('X-Content-Type-Options', 'nosniff')->header('Cache-Control', 'private, no-store');
     }
 
     public function mutate(Request $request, Mailbox $mailbox): mixed
@@ -119,9 +135,14 @@ class MailController extends Controller
     public function preferences(Request $request): mixed
     {
         $data = $request->validate(['theme' => 'sometimes|in:light,dark,system', 'density' => 'sometimes|in:comfortable,compact', 'pane' => 'sometimes|in:none,right', 'collapsed' => 'sometimes|boolean', 'swipe_left' => 'sometimes|in:archive,read,none', 'swipe_right' => 'sometimes|in:archive,read,none']);
-        $request->user()->forceFill(['preferences' => [...($request->user()->preferences ?? []), ...$data]])->save();
+        $preferences = DB::transaction(function () use ($request, $data) {
+            $user = User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
+            $user->forceFill(['preferences' => [...($user->preferences ?? []), ...$data]])->save();
 
-        return response()->json($request->user()->preferences);
+            return $user->preferences;
+        });
+
+        return response()->json($preferences);
     }
 
     public function sync(ImportService $importer): mixed

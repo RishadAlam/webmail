@@ -6,6 +6,7 @@ use App\Http\Controllers\DraftController;
 use App\Http\Controllers\InternalSyncController;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\ProviderConnectionController;
+use App\Http\Controllers\TrashController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -18,7 +19,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/mail/{mailbox?}', [MailController::class, 'index'])->name('mail');
     Route::get('/mail/{mailbox}/thread/{thread}', [MailController::class, 'index'])->name('mail.thread');
     Route::get('/messages/{message}/html', [MailController::class, 'html']);
+    Route::get('/messages/{message}/original', [MailController::class, 'original'])->middleware('throttle:10,1,mail-export');
     Route::post('/mail/{mailbox}/actions', [MailController::class, 'mutate'])->middleware('throttle:60,1,mail-actions');
+    Route::delete('/mail/{mailbox}/trash', [TrashController::class, 'destroy'])->middleware('throttle:10,1,mail-purge');
     Route::post('/operations/{operation}/undo', [MailController::class, 'undo']);
     Route::put('/preferences', [MailController::class, 'preferences']);
     Route::post('/sync', [MailController::class, 'sync'])->middleware('throttle:2,1,mail-sync');

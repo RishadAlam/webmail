@@ -25,17 +25,30 @@ class DraftController extends Controller
     {
         Gate::authorize('send', $mailbox);
         $request->validate(['reply_to' => 'nullable|integer', 'mode' => 'nullable|in:reply,reply-all,forward', 'copy_failed' => 'nullable|uuid']);
-        $from = Address::where('mailbox_id', $mailbox->id)->where('active', true)->firstOrFail()->email;
+        $identities = array_values(Address::where('mailbox_id', $mailbox->id)->where('active', true)->orderBy('id')->get(['email'])
+            ->map(fn (Address $identity): string => $identity->email)->all());
+        abort_if($identities === [], 403, 'This mailbox has no authorized sender identity.');
+        $from = $identities[0];
         $fields = ['user_id' => $request->user()->id, 'mailbox_id' => $mailbox->id, 'from_email' => $from, 'to' => [], 'cc' => [], 'bcc' => [], 'subject' => '', 'body' => ''];
         if ($request->reply_to) {
             $message = Message::where('mailbox_id', $mailbox->id)->whereKey($request->integer('reply_to'))->firstOrFail();
             $forward = $request->mode === 'forward';
             $fields['subject'] = ($forward ? 'Fwd: ' : (preg_match('/^Re:/i', $message->subject) ? '' : 'Re: ')).$message->subject;
-            $fields['to'] = $forward ? [] : [$message->from_email];
+            $self = $this->normalizeAddresses($identities);
+            $replyTo = $this->normalizeAddresses($message->reply_to ?: [$message->from_email], $self);
+            // Replying to one's own Sent message should target its original
+            // audience, not another active alias of the same mailbox.
+            if (! $replyTo) {
+                $replyTo = $this->normalizeAddresses($message->to, $self);
+            }
+            $fields['to'] = $forward ? [] : $replyTo;
             if ($request->mode === 'reply-all') {
-                $fields['cc'] = array_values(array_diff(array_unique([...$message->to, ...$message->cc]), [$from, $message->from_email]));
+                $fields['cc'] = $this->normalizeAddresses([...$message->to, ...$message->cc], [...$self, ...$replyTo, strtolower($message->from_email)]);
             }
             $fields['body'] = '<p></p><blockquote><p>'.e($message->from_name ?: $message->from_email).' wrote:</p><p>'.nl2br(e($message->body_text)).'</p></blockquote>';
+            if ($forward && $message->has_attachments) {
+                $fields['body'] = '<p>Attachments are not included in this forwarded message. Attachment access is disabled in this pilot; the original message is retained.</p>'.$fields['body'];
+            }
             if (! $forward) {
                 $fields['thread_id'] = $message->thread_id;
                 $fields['in_reply_to'] = $message->provider_message_id ?? $message->message_id;
@@ -46,6 +59,7 @@ class DraftController extends Controller
             $failed = Draft::whereKey($request->string('copy_failed')->toString())->where('user_id', $request->user()->id)->where('mailbox_id', $mailbox->id)->where('status', 'failed')->firstOrFail();
             $fields = [...$fields, ...$failed->only(['to', 'cc', 'bcc', 'subject', 'body', 'in_reply_to', 'thread_id'])];
         }
+        $this->validateDraftContent($fields);
         $draft = DB::transaction(function () use ($mailbox, $fields) {
             DB::table('quota_lock')->where('id', 1)->lockForUpdate()->first();
             $box = Mailbox::whereKey($mailbox->id)->lockForUpdate()->firstOrFail();
@@ -66,6 +80,7 @@ class DraftController extends Controller
         $data = $request->validate(['version' => 'required|integer|min:1', 'from_email' => 'required|email:rfc', 'to' => 'present|array|max:20', 'cc' => 'present|array|max:20', 'bcc' => 'present|array|max:20', 'to.*' => 'email:rfc|max:254', 'cc.*' => 'email:rfc|max:254', 'bcc.*' => 'email:rfc|max:254', 'subject' => ['present', 'nullable', 'string', 'max:998', 'not_regex:/[\r\n]/'], 'body' => 'present|nullable|string|max:262144']);
         $data['subject'] ??= '';
         $data['body'] ??= '';
+        $this->validateDraftContent($data);
         abort_unless(Address::where('mailbox_id', $draft->mailbox_id)->where('email', $data['from_email'])->where('active', true)->exists(), 403, 'Sender not authorized.');
         $saved = DB::transaction(function () use ($draft, $data) {
             DB::table('quota_lock')->where('id', 1)->lockForUpdate()->first();
@@ -112,5 +127,27 @@ class DraftController extends Controller
     {
         abort_unless($draft->user_id === $request->user()->id, 403);
         Gate::authorize('send', Mailbox::findOrFail($draft->mailbox_id));
+    }
+
+    /**
+     * @param  list<string>  $addresses
+     * @param  list<string>  $exclude
+     * @return list<string>
+     */
+    private function normalizeAddresses(array $addresses, array $exclude = []): array
+    {
+        return array_values(array_diff(array_unique(array_map(fn ($email) => strtolower(trim($email)), $addresses)), $exclude));
+    }
+
+    /** @param array<string, mixed> $fields */
+    private function validateDraftContent(array $fields): void
+    {
+        validator([...$fields, 'recipients' => [...$fields['to'], ...$fields['cc'], ...$fields['bcc']]], [
+            'recipients' => 'array|max:20', 'recipients.*' => 'required|email:rfc|max:254',
+            'subject' => ['present', 'string', 'max:998', 'not_regex:/[\r\n]/'],
+            'body' => 'present|string|max:262144',
+        ], ['recipients.max' => 'This pilot supports at most 20 recipients across To, Cc and Bcc. No recipients were removed; choose a smaller audience.',
+            'body.max' => 'The quoted message is too large for an editable draft. Start a new message with a shorter excerpt; the original is retained.'])->validate();
+        abort_if(strlen($fields['body']) > config('postroom.max_mime_bytes'), 422, 'The draft text exceeds the 256 KiB editing limit. Shorten it; the original message and any saved draft are retained.');
     }
 }
