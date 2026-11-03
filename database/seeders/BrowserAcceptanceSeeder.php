@@ -21,6 +21,8 @@ class BrowserAcceptanceSeeder extends Seeder
             throw new \RuntimeException('Browser acceptance fixtures require testing/mock and the exact webmail_test MySQL database.');
         }
 
+        $this->call(DemoSeeder::class);
+
         DB::transaction(function () {
             // Authentication UI cases use their own fixture identity so their
             // deliberate failed logins cannot throttle mailbox regressions.
