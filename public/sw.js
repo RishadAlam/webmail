@@ -19,7 +19,7 @@ self.addEventListener('activate', (event) => {
                         .filter(
                             (key) =>
                                 (key.startsWith('webmail-public-') ||
-                                    key.startsWith('postroom-public-')) &&
+                                    key.startsWith('webmail-public-')) &&
                                 key !== CACHE,
                         )
                         .map((key) => caches.delete(key)),

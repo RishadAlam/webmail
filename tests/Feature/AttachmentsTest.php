@@ -164,9 +164,9 @@ class AttachmentsTest extends TestCase
         $this->box->update(['quota_bytes' => $bytes + 5]);
         $this->upload($draft, 'Does not fit')->assertUnprocessable();
         $this->box->update(['quota_bytes' => 26214400]);
-        config(['postroom.organization_bytes' => $bytes + 5]);
+        config(['webmail.organization_bytes' => $bytes + 5]);
         $this->upload($draft, 'Does not fit')->assertUnprocessable();
-        config(['postroom.organization_bytes' => 367001600]);
+        config(['webmail.organization_bytes' => 367001600]);
         $budget = \Mockery::mock(StorageBudget::class);
         $budget->shouldReceive('permits')->andReturnFalse();
         $this->app->instance(StorageBudget::class, $budget);
@@ -205,7 +205,7 @@ class AttachmentsTest extends TestCase
 
     public function test_copying_a_confirmed_failed_draft_copies_its_attachments_without_losing_the_original_evidence(): void
     {
-        config(['postroom.mock_outcome' => 'failed']);
+        config(['webmail.mock_outcome' => 'failed']);
         $draft = $this->draft();
         $this->upload($draft, 'Retained failed file')->assertCreated();
         $this->postJson('/drafts/'.$draft->id.'/send', ['version' => 3])->assertOk()->assertJsonPath('status', 'failed');
@@ -223,7 +223,7 @@ class AttachmentsTest extends TestCase
 
     public function test_provider_payload_and_sent_original_include_bytes_and_trash_keeps_retained_evidence_charged(): void
     {
-        config(['postroom.resend_key' => 'fictional-test-key', 'postroom.sending_enabled' => true]);
+        config(['webmail.resend_key' => 'fictional-test-key', 'webmail.sending_enabled' => true]);
         $this->app->bind(OutboundMailProvider::class, ResendProvider::class);
         Http::fake(['api.resend.com/emails' => Http::response(['id' => 'fictional-provider-attachment'], 200)]);
         $draft = $this->draft();

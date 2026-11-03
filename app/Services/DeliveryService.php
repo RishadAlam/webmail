@@ -60,12 +60,12 @@ class DeliveryService
             // Charge it to the retained draft so purging Sent cannot free its charge.
             $evidenceBytes = $attachments !== [] ? strlen(json_encode($attachments, JSON_THROW_ON_ERROR)) : 0;
             $growth = $bytes + $evidenceBytes;
-            if (! app(StorageBudget::class)->permits($growth) || ! $this->usage->allowance(count($recipients), $snapshot) || $box->used_bytes + $growth > $box->quota_bytes || Mailbox::sum('used_bytes') + $growth > config('postroom.organization_bytes')) {
+            if (! app(StorageBudget::class)->permits($growth) || ! $this->usage->allowance(count($recipients), $snapshot) || $box->used_bytes + $growth > $box->quota_bytes || Mailbox::sum('used_bytes') + $growth > config('webmail.organization_bytes')) {
                 $draft->update(['status' => 'held']);
 
                 return ['status' => 'held', 'error' => 'Sending paused: the shared allowance or storage headroom is unavailable. Your draft is saved. Ask an administrator to review Usage.'];
             }
-            $payload = ['from' => $draft->from_email, 'to' => $draft->to, 'subject' => $draft->subject, 'html' => $html, 'text' => $text, 'tags' => [['name' => 'postroom_intent', 'value' => $intentId]]];
+            $payload = ['from' => $draft->from_email, 'to' => $draft->to, 'subject' => $draft->subject, 'html' => $html, 'text' => $text, 'tags' => [['name' => 'webmail_intent', 'value' => $intentId]]];
             if ($attachments !== []) {
                 $payload['attachments'] = $attachments;
             }
@@ -81,7 +81,7 @@ class DeliveryService
             $intent = SendIntent::create(['id' => $intentId, 'draft_id' => $draft->id, 'user_id' => $user->id, 'mailbox_id' => $box->id, 'payload' => $payload, 'recipients' => count($recipients), 'status' => 'queued']);
             DB::table('quota_ledger')->insert(['intent_id' => $intent->id, 'recipients' => count($recipients), 'created_at' => now()]);
             $box->increment('used_bytes', $growth);
-            Message::create(['send_intent_id' => $intent->id, 'mailbox_id' => $box->id, 'thread_id' => $draft->thread_id ?? (string) Str::uuid(), 'message_id' => '<'.$intent->id.'@'.config('postroom.domain').'>',
+            Message::create(['send_intent_id' => $intent->id, 'mailbox_id' => $box->id, 'thread_id' => $draft->thread_id ?? (string) Str::uuid(), 'message_id' => '<'.$intent->id.'@'.config('webmail.domain').'>',
                 'from_name' => $user->name, 'from_email' => $draft->from_email, 'to' => $draft->to, 'cc' => $draft->cc, 'subject' => $draft->subject,
                 'body_text' => $text, 'body_html' => $html, 'raw_mime' => $raw, 'folder' => 'sent', 'is_read' => true, 'has_attachments' => $attachments !== [], 'delivery_status' => 'queued', 'logical_bytes' => $bytes]);
             $draft->update(['status' => 'queued', 'logical_bytes' => $draft->logical_bytes + $evidenceBytes]);
@@ -163,7 +163,7 @@ class DeliveryService
         $result = $claim['intent'];
         if ($claim['claimed']) {
             try {
-                $outcome = $this->provider->send($result->payload, 'postroom/'.$result->id);
+                $outcome = $this->provider->send($result->payload, 'webmail/'.$result->id);
             } catch (\Throwable) {
                 $outcome = ['status' => 'uncertain', 'id' => null, 'error' => 'Provider result could not be recorded. Reconcile before resending.'];
             }
@@ -180,6 +180,6 @@ class DeliveryService
         }
         $result->refresh();
 
-        return ['id' => $result->id, 'status' => $result->status, 'error' => $result->last_error, 'resumable' => $claim['resumable'], 'simulated' => config('postroom.provider') === 'mock'];
+        return ['id' => $result->id, 'status' => $result->status, 'error' => $result->last_error, 'resumable' => $claim['resumable'], 'simulated' => config('webmail.provider') === 'mock'];
     }
 }

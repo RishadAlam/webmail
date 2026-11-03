@@ -7,7 +7,6 @@ public/build
 playwright-report
 test-results
 .wrangler
-storage/*.sqlite*
 storage/**
 bootstrap/cache/*.php
 bootstrap/ssr

@@ -8,7 +8,7 @@ import {
     type ReactElement,
 } from 'react';
 import { toast } from 'sonner';
-import { IconButton, Sheet } from '@/components/postroom/ui';
+import { IconButton, Sheet } from '@/components/webmail/ui';
 import {
     api,
     type Contact,

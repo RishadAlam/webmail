@@ -3,18 +3,18 @@ export default defineConfig({
     testDir: 'tests/e2e',
     projects: [
         {
-            name: process.env.POSTROOM_BROWSER ?? 'chromium',
+            name: process.env.WEBMAIL_BROWSER ?? 'chromium',
             use: {
-                browserName: (process.env.POSTROOM_BROWSER ?? 'chromium') as
+                browserName: (process.env.WEBMAIL_BROWSER ?? 'chromium') as
                     | 'chromium'
                     | 'firefox'
                     | 'webkit',
                 launchOptions:
-                    process.env.POSTROOM_BROWSER === 'webkit' &&
-                    process.env.POSTROOM_WEBKIT_EXECUTABLE
+                    process.env.WEBMAIL_BROWSER === 'webkit' &&
+                    process.env.WEBMAIL_WEBKIT_EXECUTABLE
                         ? {
                               executablePath:
-                                  process.env.POSTROOM_WEBKIT_EXECUTABLE,
+                                  process.env.WEBMAIL_WEBKIT_EXECUTABLE,
                           }
                         : undefined,
             },
@@ -38,11 +38,15 @@ export default defineConfig({
         env: {
             APP_ENV: 'testing',
             APP_URL: 'http://127.0.0.1:8010',
-            DB_CONNECTION: 'sqlite',
-            DB_DATABASE: process.cwd() + '/storage/e2e.sqlite',
+            DB_CONNECTION: 'mysql',
+            DB_DATABASE: 'webmail_test',
+            DB_HOST: '127.0.0.1',
+            DB_PORT: '3306',
+            DB_USERNAME: 'root',
+            DB_PASSWORD: '',
             DB_URL: '',
-            POSTROOM_PROVIDER: 'mock',
-            POSTROOM_DAILY_LIMIT: '2',
+            WEBMAIL_PROVIDER: 'mock',
+            WEBMAIL_DAILY_LIMIT: '2',
         },
         timeout: 30000,
     },

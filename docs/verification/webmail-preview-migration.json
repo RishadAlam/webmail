@@ -4,13 +4,13 @@
     "environment_guard": {
         "environment": "local",
         "driver": "pgsql",
-        "effective_current_database": "postroom",
+        "effective_current_database": "webmail",
         "local_postgres_host": "postgres",
         "provider": "mock",
         "passed": true
     },
     "backup": {
-        "path": "/tmp/webmail-preview-before-review-l_o7_kiv/postroom.pgdump",
+        "path": "/tmp/webmail-preview-before-review-l_o7_kiv/webmail.pgdump",
         "mode": "0o600",
         "directory_mode": "0o700",
         "bytes": 65886,
@@ -18,7 +18,7 @@
         "archive_list_check": "passed",
         "method": "pg_dump custom-format archive streamed directly into a private local file",
         "archive_validation": "pg_restore --list exited 0; no restore or data reset performed",
-        "dump_command": "docker compose exec -T postgres pg_dump --username=postroom --dbname=postroom --format=custom"
+        "dump_command": "docker compose exec -T postgres pg_dump --username=webmail --dbname=webmail --format=custom"
     },
     "migration": {
         "command": "rtk proxy docker compose exec -T app php artisan migrate --force --no-ansi --path=database/migrations/2026_11_01_000004_create_recipient_directory_syncs.php --path=database/migrations/2026_11_01_000005_add_message_reply_addresses.php --path=database/migrations/2026_11_01_000006_create_installation_state.php --path=database/migrations/2026_11_01_000007_create_provider_connections.php --path=database/migrations/2026_11_01_000008_add_address_enabled_policy.php --path=database/migrations/2026_11_01_000009_retain_receipts_after_message_deletion.php",

@@ -12,10 +12,10 @@ test('password visibility works by keyboard and resets when signing in', async (
 }) => {
     const email = page.getByLabel('Email address', { exact: true });
     const password = page.getByLabel('Password', { exact: true });
-    await email.fill('signin@postroom.test');
+    await email.fill('signin@webmail.test');
     await email.press('Tab');
     await expect(password).toBeFocused();
-    await password.fill('postroom-local-only');
+    await password.fill('webmail-local-only');
     await password.press('Tab');
     const show = page.getByRole('button', {
         name: 'Show password',
@@ -24,7 +24,7 @@ test('password visibility works by keyboard and resets when signing in', async (
     await expect(show).toBeFocused();
     await show.press('Enter');
     await expect(password).toHaveAttribute('type', 'text');
-    await expect(password).toHaveValue('postroom-local-only');
+    await expect(password).toHaveValue('webmail-local-only');
     await expect(page).toHaveURL(/\/login$/);
     await page.getByRole('button', { name: 'Hide password' }).press('Enter');
     await expect(password).toHaveAttribute('type', 'password');
@@ -62,11 +62,11 @@ test('failed sign-in keeps the email, announces the error, and supports retry', 
 }, info) => {
     const email = page.getByLabel('Email address', { exact: true });
     const password = page.getByLabel('Password', { exact: true });
-    await email.fill('signin@postroom.test');
+    await email.fill('signin@webmail.test');
     await password.fill('incorrect-fictional-password');
     await password.press('Enter');
     await expect(page.getByRole('alert')).toBeVisible();
-    await expect(email).toHaveValue('signin@postroom.test');
+    await expect(email).toHaveValue('signin@webmail.test');
     await expect(email).toHaveAttribute('aria-invalid', 'true');
     await expect(email).toHaveAccessibleDescription(/credentials/i);
     await expect(email).toBeFocused();
@@ -74,7 +74,7 @@ test('failed sign-in keeps the email, announces the error, and supports retry', 
         path: info.outputPath('login-error.png'),
         animations: 'disabled',
     });
-    await password.fill('postroom-local-only');
+    await password.fill('webmail-local-only');
     await password.press('Enter');
     await expect(
         page.getByRole('heading', { name: 'Inbox', exact: true }),
@@ -87,8 +87,8 @@ test('forgot password explains managed recovery without submitting or losing sig
     await page.setViewportSize({ width: 390, height: 844 });
     const email = page.getByLabel('Email address', { exact: true });
     const password = page.getByLabel('Password', { exact: true });
-    await email.fill('signin@postroom.test');
-    await password.fill('postroom-local-only');
+    await email.fill('signin@webmail.test');
+    await password.fill('webmail-local-only');
     const submitted: string[] = [];
     page.on('request', (request) => {
         if (request.method() === 'POST') submitted.push(request.url());
@@ -103,8 +103,8 @@ test('forgot password explains managed recovery without submitting or losing sig
     await expect(recovery).toBeVisible();
     await expect(recovery).toContainText(/administrator/);
     await expect(recovery).toContainText(/reset links by email/i);
-    await expect(email).toHaveValue('signin@postroom.test');
-    await expect(password).toHaveValue('postroom-local-only');
+    await expect(email).toHaveValue('signin@webmail.test');
+    await expect(password).toHaveValue('webmail-local-only');
     await expect(page).toHaveURL(/\/login$/);
     expect(submitted).toEqual([]);
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);

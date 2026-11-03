@@ -10,14 +10,14 @@ class UsageService
 {
     public function snapshot(bool $refresh = false): ?\stdClass
     {
-        if (config('postroom.provider') === 'mock') {
+        if (config('webmail.provider') === 'mock') {
             return null;
         }
         $snapshot = DB::table('usage_snapshots')->where('provider', 'resend')->first();
         if (! $refresh && $snapshot?->last_error && $snapshot->updated_at && Carbon::parse($snapshot->updated_at)->gt(now()->subMinute())) {
             return $snapshot;
         }
-        if (! $refresh && $snapshot && $snapshot->observed_at && Carbon::parse($snapshot->observed_at)->gt(now()->subSeconds(config('postroom.usage_ttl')))) {
+        if (! $refresh && $snapshot && $snapshot->observed_at && Carbon::parse($snapshot->observed_at)->gt(now()->subSeconds(config('webmail.usage_ttl')))) {
             return $snapshot;
         }
         try {
@@ -35,10 +35,10 @@ class UsageService
     {
         $daily = (int) DB::table('quota_ledger')->where('created_at', '>=', now()->subDay())->sum('recipients');
         $monthly = (int) DB::table('quota_ledger')->where('created_at', '>=', now()->startOfMonth())->sum('recipients');
-        $dailyLimit = config('postroom.daily_limit');
-        $monthlyLimit = config('postroom.monthly_limit');
-        if (config('postroom.provider') !== 'mock') {
-            if (! $snapshot?->observed_at || $snapshot->last_error || Carbon::parse($snapshot->observed_at)->lt(now()->subSeconds(config('postroom.usage_ttl')))) {
+        $dailyLimit = config('webmail.daily_limit');
+        $monthlyLimit = config('webmail.monthly_limit');
+        if (config('webmail.provider') !== 'mock') {
+            if (! $snapshot?->observed_at || $snapshot->last_error || Carbon::parse($snapshot->observed_at)->lt(now()->subSeconds(config('webmail.usage_ttl')))) {
                 return false;
             }
             $data = json_decode($snapshot->data, true);
@@ -59,13 +59,13 @@ class UsageService
     /**  @return array<array-key, mixed> */
     public function meters(): array
     {
-        $snapshot = config('postroom.provider') === 'mock' ? null : $this->snapshot();
+        $snapshot = config('webmail.provider') === 'mock' ? null : $this->snapshot();
         $data = $snapshot?->data ? json_decode($snapshot->data, true) : [];
         $meters = [];
-        foreach (['daily' => config('postroom.daily_limit'), 'monthly' => config('postroom.monthly_limit')] as $window => $limit) {
-            $mock = config('postroom.provider') === 'mock';
+        foreach (['daily' => config('webmail.daily_limit'), 'monthly' => config('webmail.monthly_limit')] as $window => $limit) {
+            $mock = config('webmail.provider') === 'mock';
             $used = $mock ? (int) DB::table('quota_ledger')->where('created_at', '>=', $window === 'daily' ? now()->subDay() : now()->startOfMonth())->sum('recipients') : ($data[$window]['used'] ?? null);
-            $stale = $snapshot && ($snapshot->last_error || ! $snapshot->observed_at || Carbon::parse($snapshot->observed_at)->lt(now()->subSeconds(config('postroom.usage_ttl'))));
+            $stale = $snapshot && ($snapshot->last_error || ! $snapshot->observed_at || Carbon::parse($snapshot->observed_at)->lt(now()->subSeconds(config('webmail.usage_ttl'))));
             $meters[] = ['provider' => $mock ? 'Local simulator' : 'Resend', 'resource' => 'Outgoing email · '.$window, 'scope' => 'Shared organization',
                 'used' => $used, 'limit' => $data[$window]['limit'] ?? $limit, 'reserved' => (int) DB::table('send_intents')->whereIn('status', ['queued', 'dispatching', 'uncertain'])->sum('recipients'),
                 'unit' => 'recipient deliveries', 'accuracy' => $mock ? 'locally_measured' : ($used === null ? 'unavailable' : 'provider_reported'),
@@ -74,10 +74,10 @@ class UsageService
         }
         $physical = app(StorageBudget::class)->measuredBytes();
         $meters[] = ['provider' => 'PostgreSQL', 'resource' => 'Database footprint', 'scope' => 'Current database; not the whole Neon project',
-            'used' => $physical, 'limit' => config('postroom.database_stop_bytes'), 'reserved' => null, 'unit' => 'bytes',
+            'used' => $physical, 'limit' => config('webmail.database_stop_bytes'), 'reserved' => null, 'unit' => 'bytes',
             'accuracy' => $physical === null ? 'unavailable' : 'locally_measured', 'status' => $physical === null ? 'unavailable' : 'current',
             'observed_at' => $physical === null ? null : now()->toIso8601String(), 'resets_at' => null,
-            'last_error' => 'Postroom stops new content writes at 750 MiB or a lower configured cap. This is an application safeguard; other Neon branches and compute need separate account checks.'];
+            'last_error' => 'Webmail stops new content writes at 750 MiB or a lower configured cap. This is an application safeguard; other Neon branches and compute need separate account checks.'];
         foreach (['Neon compute', 'Render instance hours', 'Cloudflare D1 activity'] as $resource) {
             $meters[] = ['provider' => explode(' ', $resource)[0], 'resource' => $resource, 'scope' => 'Provider account', 'used' => null, 'limit' => null, 'reserved' => null, 'unit' => '',
                 'accuracy' => 'unavailable', 'status' => 'unavailable', 'observed_at' => null, 'resets_at' => null, 'last_error' => 'No verified account measurement is available.'];

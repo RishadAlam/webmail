@@ -45,10 +45,10 @@ import {
     type Preferences,
     type MailLabel,
 } from '@/lib/mail';
-import { Brand, IconButton, Sheet } from '@/components/postroom/ui';
-import { useCompose } from '@/components/postroom/compose';
-import { MessageAttachments } from '@/components/postroom/attachments';
-import { SearchOptions } from '@/components/postroom/search-options';
+import { Brand, IconButton, Sheet } from '@/components/webmail/ui';
+import { useCompose } from '@/components/webmail/compose';
+import { MessageAttachments } from '@/components/webmail/attachments';
+import { SearchOptions } from '@/components/webmail/search-options';
 import { useMailNavigation } from '@/lib/mail-navigation';
 import { useMailPreferences } from '@/lib/mail-preferences';
 import { mailThemes } from '@/lib/mail-themes';

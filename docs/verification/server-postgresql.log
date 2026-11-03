@@ -62,7 +62,7 @@
    PASS  Tests\Feature\ExampleTest
   ✓ root redirects to private login                                      0.02s
 
-   PASS  Tests\Feature\PostroomTest
+   PASS  Tests\Feature\WebmailTest
   ✓ public registration is absent                                        0.02s
   ✓ mail is scoped even for administrators                               0.03s
   ✓ drafts reject stale versions without losing content                  0.03s

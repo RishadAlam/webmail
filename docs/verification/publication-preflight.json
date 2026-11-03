@@ -17,8 +17,8 @@
             "exit_code": 0
         },
         {
-            "command": "docker compose exec -T -e APP_ENV=testing -e DB_CONNECTION=pgsql -e DB_DATABASE=postroom_test -e DB_URL= app php artisan test --compact",
-            "database": "PostgreSQL postroom_test (name verified before execution)",
+            "command": "docker compose exec -T -e APP_ENV=testing -e DB_CONNECTION=pgsql -e DB_DATABASE=webmail_test -e DB_URL= app php artisan test --compact",
+            "database": "PostgreSQL webmail_test (name verified before execution)",
             "passed": 201,
             "skipped": 16,
             "assertions": 1045,
@@ -43,7 +43,7 @@
         },
         {
             "engine": "firefox",
-            "command": "POSTROOM_BROWSER=firefox npm run test:e2e -- --reporter=line",
+            "command": "WEBMAIL_BROWSER=firefox npm run test:e2e -- --reporter=line",
             "passed": 31,
             "failed": 0,
             "exit_code": 0,
@@ -51,7 +51,7 @@
         },
         {
             "engine": "webkit",
-            "command": "POSTROOM_BROWSER=webkit POSTROOM_WEBKIT_EXECUTABLE=/tmp/postroom-webkit.sh npm run test:e2e -- --reporter=line",
+            "command": "WEBMAIL_BROWSER=webkit WEBMAIL_WEBKIT_EXECUTABLE=/tmp/webmail-webkit.sh npm run test:e2e -- --reporter=line",
             "passed": 31,
             "failed": 0,
             "exit_code": 0,

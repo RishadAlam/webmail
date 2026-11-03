@@ -1,4 +1,4 @@
-import { ComposeProvider } from '@/components/postroom/compose';
+import { ComposeProvider } from '@/components/webmail/compose';
 import { type ReactNode } from 'react';
 import { usePage } from '@inertiajs/react';
 import { MailNavigationProvider } from '@/lib/mail-navigation';

@@ -13,7 +13,7 @@
 
 ### Design changes
 
-- Gmail becomes the primary desktop and mobile UI/UX reference, with original Postroom identity and code.
+- Gmail becomes the primary desktop and mobile UI/UX reference, with original Webmail identity and code.
 - Replaces mandatory desktop three-pane layout with a full-width list/conversation default and optional reading pane.
 - Replaces teal-first styling with cool neutral/white surfaces and restrained blue accents.
 - Adds docked/minimizable/expandable desktop compose and shared full-screen mobile compose state.

@@ -1,7 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { Plus, RefreshCw, Settings2 } from 'lucide-react';
-import { Sheet } from '@/components/postroom/ui';
+import { Sheet } from '@/components/webmail/ui';
 import { api, byteText, type Mailbox } from '@/lib/mail';
 
 const refreshAdministration = () =>

@@ -14,9 +14,9 @@ class AdminMailboxes
     public function limits(): array
     {
         return [
-            'domain' => (string) config('postroom.domain'), 'max_users' => 5, 'max_mailboxes' => 10,
+            'domain' => (string) config('webmail.domain'), 'max_users' => 5, 'max_mailboxes' => 10,
             'max_addresses' => 100, 'min_mailbox_bytes' => 1048576,
-            'max_mailbox_bytes' => min(26214400, (int) config('postroom.mailbox_bytes')),
+            'max_mailbox_bytes' => min(26214400, (int) config('webmail.mailbox_bytes')),
         ];
     }
 
@@ -149,7 +149,7 @@ class AdminMailboxes
 
     private function availableAddress(string $localPart): string
     {
-        $domain = strtolower((string) config('postroom.domain'));
+        $domain = strtolower((string) config('webmail.domain'));
         abort_unless(strlen($domain) <= 253 && preg_match('/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/D', $domain),
             503, 'Configure the WebMail receiving domain before adding addresses.');
         abort_unless(preg_match('/^[a-z0-9][a-z0-9._-]{0,63}$/D', $localPart) === 1, 422, 'Use an explicit local address.');
@@ -167,7 +167,7 @@ class AdminMailboxes
         abort_if($bytes < $limits['min_mailbox_bytes'] || $bytes > $limits['max_mailbox_bytes'], 422, 'Mailbox allocation must be between 1 MiB and the configured free-pilot maximum.');
         abort_if($box && $bytes < $box->used_bytes, 422, 'The allocation cannot be lower than the mailbox data already retained.');
         $allocated = (int) Mailbox::sum('quota_bytes') - (int) ($box->quota_bytes ?? 0) + $bytes;
-        abort_if($allocated > min(367001600, (int) config('postroom.organization_bytes')), 422, 'Mailbox allocations would exceed the organization storage budget.');
+        abort_if($allocated > min(367001600, (int) config('webmail.organization_bytes')), 422, 'Mailbox allocations would exceed the organization storage budget.');
     }
 
     private function lock(): void

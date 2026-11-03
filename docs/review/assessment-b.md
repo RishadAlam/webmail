@@ -11,8 +11,8 @@ Pinned Impeccable **3.8.0** was reviewed before execution. The entrypoint, facad
 Executed:
 
 ```bash
-rtk proxy env IMPECCABLE_NO_UPDATE_CHECK=1 /tmp/postroom-node/node_modules/node/bin/node /home/rishadalam/.codex/plugins/cache/personal/impeccable/3.8.0/skills/impeccable/scripts/context.mjs --target resources/js/pages
-rtk proxy /tmp/postroom-node/node_modules/node/bin/node /home/rishadalam/.codex/plugins/cache/personal/impeccable/3.8.0/skills/impeccable/scripts/detect.mjs --json resources/js/pages resources/js/components resources/js/layouts
+rtk proxy env IMPECCABLE_NO_UPDATE_CHECK=1 /tmp/webmail-node/node_modules/node/bin/node /home/rishadalam/.codex/plugins/cache/personal/impeccable/3.8.0/skills/impeccable/scripts/context.mjs --target resources/js/pages
+rtk proxy /tmp/webmail-node/node_modules/node/bin/node /home/rishadalam/.codex/plugins/cache/personal/impeccable/3.8.0/skills/impeccable/scripts/detect.mjs --json resources/js/pages resources/js/components resources/js/layouts
 ```
 
 Context loader: exit 0; resolved root PRODUCT.md and DESIGN.md, register `product`. Update checking was explicitly disabled to preserve the reviewed pin and avoid network/cache side effects.
@@ -43,7 +43,7 @@ The response used `script-src 'self' 'nonce-…'`, with no overlay exception. Pr
 
 At 320 px light, the active “Profile” / “Appearance” text is `rgb(31,31,31)` on `rgb(84,91,102)`: **2.41:1** at 13.125 px. At 1440 px dark, active “Profile” is `rgb(232,236,242)` on `rgb(177,187,200)`: **1.64:1** at 12.25 px. Both are opaque colors, so these readings do not depend on alpha compositing.
 
-Cause: the global mail token `--muted` is a text color, while Tailwind `--color-muted: var(--muted)` expects a surface color. Settings uses `bg-muted` for the active item. Source: `resources/css/postroom.css` token block, `resources/css/app.css` theme aliases, `resources/js/layouts/settings/layout.tsx:54`.
+Cause: the global mail token `--muted` is a text color, while Tailwind `--color-muted: var(--muted)` expects a surface color. Settings uses `bg-muted` for the active item. Source: `resources/css/webmail.css` token block, `resources/css/app.css` theme aliases, `resources/js/layouts/settings/layout.tsx:54`.
 
 Fix: separate mail text/surface tokens from the component theme vocabulary and apply paired foreground/background tokens. Recheck active, hover and focus states across shared settings/auth components.
 
@@ -77,7 +77,7 @@ Reproduced with keyboard-only opening:
 3. Escape closes the dialog (**pass**).
 4. `document.activeElement` is **BODY**, not the Quick settings button (**fail**).
 
-The mobile navigation drawer also closes on Escape to **BODY**. Source `components/postroom/ui.tsx` uses a controlled Radix Dialog without a Trigger or explicit close-focus restoration.
+The mobile navigation drawer also closes on Escape to **BODY**. Source `components/webmail/ui.tsx` uses a controlled Radix Dialog without a Trigger or explicit close-focus restoration.
 
 Fix: capture the invoker or use Dialog.Trigger; restore focus on close and retain logical fallback behavior if the invoker disappears. Evidence is in the exact focused browser harness/result below. Reference: [W3C dialog keyboard behavior](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/).
 
@@ -91,7 +91,7 @@ The same fictional session shows **Light** selected in Mail → Quick settings a
 
 No preference was changed to test persistence. The inconsistent visible selected values and separate stores are confirmed; cross-route persistence consequences remain an inference from source.
 
-The security route redirects to a password-confirmation page with the **Laravel logo**, generic starter styling and a home link named “Confirm password”, while login/mail/settings use Postroom’s envelope identity. This breaks continuity at a sensitive authentication step. See `layouts/auth/auth-simple-layout.tsx`, `components/app-logo-icon.tsx`, and the screenshot. The requested WebMail by Hookstack identity should be applied to this route too.
+The security route redirects to a password-confirmation page with the **Laravel logo**, generic starter styling and a home link named “Confirm password”, while login/mail/settings use Webmail’s envelope identity. This breaks continuity at a sensitive authentication step. See `layouts/auth/auth-simple-layout.tsx`, `components/app-logo-icon.tsx`, and the screenshot. The requested WebMail by Hookstack identity should be applied to this route too.
 
 Fix: one user preference source and accessible selection semantics; use the same branded auth shell for login, MFA and step-up authentication.
 
@@ -174,7 +174,7 @@ These inline harnesses are preserved here to make the evidence reproducible with
 ### Full baseline harness
 
 ```bash
-rtk proxy /tmp/postroom-node/node_modules/node/bin/node - <<'JS'
+rtk proxy /tmp/webmail-node/node_modules/node/bin/node - <<'JS'
 
 const {chromium}=require('playwright');
 (async()=>{
@@ -192,7 +192,7 @@ const {chromium}=require('playwright');
  const shot=async(label)=>page.screenshot({path:'docs/review/evidence-b/'+label+'.png',fullPage:true});
  const scaleText=async()=>page.evaluate(()=>{const els=[document.documentElement,...document.querySelectorAll('body,body *')];const sizes=els.map(e=>{const s=getComputedStyle(e);return [e,parseFloat(s.fontSize),s.lineHeight]});for(const [e,size,line]of sizes){if(!(e instanceof HTMLElement))continue;e.style.fontSize=(size*2)+'px';if(line!=='normal')e.style.lineHeight=(parseFloat(line)*2)+'px';}});
  try{
- await page.goto('http://localhost:8082/login');await page.getByLabel('Email address').fill('mira@postroom.test');await page.getByLabel('Password',{exact:true}).fill('postroom-local-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.waitForURL(/\/mail(?:\/|\?|$)/);await page.goto('http://localhost:8082/mail');await page.getByRole('textbox',{name:'Search mail',exact:true}).waitFor();
+ await page.goto('http://localhost:8082/login');await page.getByLabel('Email address').fill('mira@webmail.test');await page.getByLabel('Password',{exact:true}).fill('webmail-local-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.waitForURL(/\/mail(?:\/|\?|$)/);await page.goto('http://localhost:8082/mail');await page.getByRole('textbox',{name:'Search mail',exact:true}).waitFor();
  await context.route('**/*',async route=>{const req=route.request();if(!['GET','HEAD','OPTIONS'].includes(req.method())){blocked.push(req.method()+' '+new URL(req.url()).pathname);await route.abort();}else await route.continue();});
  const props=await page.evaluate(()=>{const s=document.querySelector('script[data-page="app"]');return s?JSON.parse(s.textContent).props:null});const read=props?.messages?.find(m=>m.is_read);console.log('FIXTURE '+JSON.stringify({mailbox:props?.mailbox?.id,messageCount:props?.messages?.length,alreadyRead:read?{thread:read.thread_id,subject:read.subject}:null}));
  for(const width of [320,360,390,430,768,1024,1440]){await page.setViewportSize({width,height:960});await measure('inbox-'+width);if([320,390,768,1440].includes(width))await shot('inbox-'+width+'-light');}
@@ -216,7 +216,7 @@ JS
 ### Focused confirmation harness
 
 ```bash
-rtk proxy /tmp/postroom-node/node_modules/node/bin/node - <<'JS'
+rtk proxy /tmp/webmail-node/node_modules/node/bin/node - <<'JS'
 
 const {chromium}=require('playwright');
 (async()=>{
@@ -235,7 +235,7 @@ const {chromium}=require('playwright');
  const scaleText=async()=>page.evaluate(()=>{const els=[...document.querySelectorAll('body,body *')];const sizes=els.map(e=>{const s=getComputedStyle(e);return [e,parseFloat(s.fontSize),s.lineHeight]});for(const [e,size,line]of sizes){if(!(e instanceof HTMLElement))continue;e.style.fontSize=(size*2)+'px';if(line!=='normal')e.style.lineHeight=(parseFloat(line)*2)+'px';}});
 
  try{
- await page.goto('http://localhost:8082/login');await page.getByLabel('Email address').fill('mira@postroom.test');await page.getByLabel('Password',{exact:true}).fill('postroom-local-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.waitForURL(/\/mail(?:\/|\?|$)/);await page.goto('http://localhost:8082/mail');await page.getByRole('textbox',{name:'Search mail',exact:true}).waitFor();
+ await page.goto('http://localhost:8082/login');await page.getByLabel('Email address').fill('mira@webmail.test');await page.getByLabel('Password',{exact:true}).fill('webmail-local-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.waitForURL(/\/mail(?:\/|\?|$)/);await page.goto('http://localhost:8082/mail');await page.getByRole('textbox',{name:'Search mail',exact:true}).waitFor();
  await context.route('**/*',async route=>{const req=route.request();if(!['GET','HEAD','OPTIONS'].includes(req.method())){blocked.push(req.method()+' '+new URL(req.url()).pathname);await route.abort();}else await route.continue();});
  const tabOrder=[];for(let i=0;i<16;i++){await page.keyboard.press('Tab');tabOrder.push(await page.evaluate(()=>{const e=document.activeElement,s=getComputedStyle(e);return {name:e.getAttribute('aria-label')||e.textContent.trim().slice(0,80)||e.tagName,outline:s.outlineStyle+' '+s.outlineWidth+' '+s.outlineColor};}));}console.log('TAB_ORDER '+JSON.stringify(tabOrder));
  await page.getByRole('button',{name:'Quick settings',exact:true}).focus();await page.keyboard.press('Enter');let trapped=true;for(let i=0;i<20;i++){await page.keyboard.press('Tab');trapped=trapped&&await page.evaluate(()=>!!document.activeElement.closest('[role="dialog"]'));}await page.keyboard.press('Escape');console.log('QUICK_FOCUS '+JSON.stringify({trapped,...await page.evaluate(()=>({dialog:!!document.querySelector('[role="dialog"]'),focus:document.activeElement.getAttribute('aria-label')||document.activeElement.tagName}))}));
@@ -253,7 +253,7 @@ JS
 ### Exact focused confirmation output
 
 ```text
-TAB_ORDER [{"name":"Skip to mail","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Open navigation","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Postroom inbox","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Search mail","outline":"none 3px rgb(31, 31, 31)"},{"name":"Search options","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Help and installation","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Quick settings","outline":"solid 2px rgb(11, 87, 208)"},{"name":"MC · Account and mailboxes","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Compose","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Inbox3","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Starred","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Sent","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Drafts","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Archive","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Spam","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Trash","outline":"solid 2px rgb(11, 87, 208)"}]
+TAB_ORDER [{"name":"Skip to mail","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Open navigation","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Webmail inbox","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Search mail","outline":"none 3px rgb(31, 31, 31)"},{"name":"Search options","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Help and installation","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Quick settings","outline":"solid 2px rgb(11, 87, 208)"},{"name":"MC · Account and mailboxes","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Compose","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Inbox3","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Starred","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Sent","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Drafts","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Archive","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Spam","outline":"solid 2px rgb(11, 87, 208)"},{"name":"Trash","outline":"solid 2px rgb(11, 87, 208)"}]
 QUICK_FOCUS {"trapped":true,"dialog":false,"focus":"BODY"}
 drawer-390 {"url":"/mail","viewport":390,"docWidth":390,"dark":false,"overflow":[],"smallControls":[{"name":"All","w":46.6,"h":44},{"name":"Unread","w":72.6,"h":44},{"name":"Unstar message","w":40,"h":40},{"name":"Star message","w":40,"h":40},{"name":"Unstar message","w":40,"h":40},{"name":"Star message","w":40,"h":40},{"name":"Star message","w":40,"h":40},{"name":"Star message","w":40,"h":40}],"contrastFailures":[],"contrastPairs":27}
 DRAWER_FOCUS {"dialog":false,"focus":"BODY"}
@@ -272,7 +272,7 @@ security-320 {"url":"/user/confirm-password","viewport":320,"docWidth":320,"dark
 TEXTDETAIL_security [{"text":"This is a secure area of the application. Please confirm you","font":"13.125px","color":"oklch(0.556 0 0)","bg":"rgba(0, 0, 0, 0)","height":42},{"text":"Confirm with passkey","font":"15px","color":"rgb(31, 31, 31)","bg":"oklch(1 0 0)","height":33.8},{"text":"password","font":"15px","color":"rgb(31, 31, 31)","bg":"rgba(0, 0, 0, 0)","height":33.8},{"text":"Show password","font":"15px","color":"oklch(0.556 0 0)","bg":"rgba(0, 0, 0, 0)","height":33.8},{"text":"Confirm password","font":"15px","color":"oklch(0.985 0 0)","bg":"oklch(0.205 0 0)","height":33.8}]
 security-320-textonly200 {"url":"/user/confirm-password","viewport":320,"docWidth":355,"dark":false,"overflow":[{"tag":"BUTTON","cls":"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2 has-[>svg]:px-3 w-full","name":"Confirm with passkey"}],"smallControls":[{"name":"Confirm password","w":33.8,"h":37.5},{"name":"Confirm with passkey","w":332.1,"h":33.8},{"name":"password","w":275,"h":33.8},{"name":"Show password","w":37.5,"h":33.8},{"name":"Confirm password","w":275,"h":33.8}],"contrastFailures":[],"contrastPairs":7}
 CLIPPED_security [{"text":"Confirm with passkey","w":330,"sw":330,"h":32,"sh":38},{"text":"Confirm password","w":275,"sw":275,"h":34,"sh":39}]
-inbox-dark-settled {"url":"/mail","viewport":1440,"docWidth":1440,"dark":true,"overflow":[{"tag":"SPAN","cls":"row-snippet","name":"Morning Mira, Here’s a little breathing room for next week. Let’s keep Monday fo"},{"tag":"SPAN","cls":"row-snippet","name":"Long-content layout fixture. Nothing here is real customer correspondence."}],"smallControls":[{"name":"Open navigation","w":36,"h":36},{"name":"Postroom inbox","w":136.8,"h":34.5},{"name":"Search options","w":36,"h":36},{"name":"Help and installation","w":36,"h":36},{"name":"Quick settings","w":36,"h":36},{"name":"MC · Account and mailboxes","w":36,"h":36},{"name":"Inbox3","w":230,"h":37},{"name":"Starred","w":230,"h":37}],"contrastFailures":[],"contrastPairs":21}
+inbox-dark-settled {"url":"/mail","viewport":1440,"docWidth":1440,"dark":true,"overflow":[{"tag":"SPAN","cls":"row-snippet","name":"Morning Mira, Here’s a little breathing room for next week. Let’s keep Monday fo"},{"tag":"SPAN","cls":"row-snippet","name":"Long-content layout fixture. Nothing here is real customer correspondence."}],"smallControls":[{"name":"Open navigation","w":36,"h":36},{"name":"Webmail inbox","w":136.8,"h":34.5},{"name":"Search options","w":36,"h":36},{"name":"Help and installation","w":36,"h":36},{"name":"Quick settings","w":36,"h":36},{"name":"MC · Account and mailboxes","w":36,"h":36},{"name":"Inbox3","w":230,"h":37},{"name":"Starred","w":230,"h":37}],"contrastFailures":[],"contrastPairs":21}
 profile-dark-settled {"url":"/settings/profile","viewport":1440,"docWidth":1440,"dark":true,"overflow":[],"smallControls":[{"name":"Back to mail","w":149.3,"h":41},{"name":"Profile","w":168,"h":28},{"name":"Security","w":168,"h":28},{"name":"Appearance","w":168,"h":28},{"name":"name","w":504,"h":31.5},{"name":"email","w":504,"h":31.5},{"name":"Save","w":59.9,"h":31.5},{"name":"Delete account","w":121.4,"h":31.5}],"contrastFailures":[{"color":"rgb(232, 236, 242)","bg":"rgb(177, 187, 200)","font":"12.25px","weight":"500","ratio":1.64,"required":4.5,"text":"Profile"},{"color":"oklch(0.936 0.032 17.717)","bg":"oklab(0.505 0.188902 0.0984118 / 0.1)","font":"14px","weight":"500","ratio":1.2,"required":4.5,"text":"Warning"},{"color":"oklch(0.936 0.032 17.717)","bg":"oklab(0.505 0.188902 0.0984118 / 0.1)","font":"12.25px","weight":"400","ratio":1.2,"required":4.5,"text":"Please proceed with caution, this cannot be undone."}],"contrastPairs":11}
 FINAL {"browser":"156.0.8078.4","blockedMutations":[],"pageErrors":[]}
 

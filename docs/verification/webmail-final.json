@@ -16,9 +16,9 @@
             "duration_seconds": 14.339
         },
         {
-            "database": "Dedicated local PostgreSQL postroom_test",
-            "preflight": "Verified APP_ENV=testing, database.default=pgsql and select current_database()=postroom_test before the suite.",
-            "command": "rtk proxy timeout 180 docker compose exec -T -e APP_ENV=testing -e DB_CONNECTION=pgsql -e DB_DATABASE=postroom_test -e DB_URL= app php artisan test --compact",
+            "database": "Dedicated local PostgreSQL webmail_test",
+            "preflight": "Verified APP_ENV=testing, database.default=pgsql and select current_database()=webmail_test before the suite.",
+            "command": "rtk proxy timeout 180 docker compose exec -T -e APP_ENV=testing -e DB_CONNECTION=pgsql -e DB_DATABASE=webmail_test -e DB_URL= app php artisan test --compact",
             "exit_code": 0,
             "total": 217,
             "passed": 201,
@@ -30,7 +30,7 @@
     "browser_suites": [
         {
             "engine": "chromium",
-            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" npm run test:e2e -- --reporter=line",
+            "command": "rtk proxy env PATH=\"/tmp/webmail-node/node_modules/node/bin:$PATH\" npm run test:e2e -- --reporter=line",
             "passed": 31,
             "failed": 0,
             "skipped": 0,
@@ -42,7 +42,7 @@
         },
         {
             "engine": "firefox",
-            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" POSTROOM_BROWSER=firefox npm run test:e2e -- --reporter=line",
+            "command": "rtk proxy env PATH=\"/tmp/webmail-node/node_modules/node/bin:$PATH\" WEBMAIL_BROWSER=firefox npm run test:e2e -- --reporter=line",
             "passed": 31,
             "failed": 0,
             "skipped": 0,
@@ -54,7 +54,7 @@
         },
         {
             "engine": "webkit",
-            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" POSTROOM_BROWSER=webkit POSTROOM_WEBKIT_EXECUTABLE=/tmp/postroom-webkit.sh npm run test:e2e -- --reporter=line",
+            "command": "rtk proxy env PATH=\"/tmp/webmail-node/node_modules/node/bin:$PATH\" WEBMAIL_BROWSER=webkit WEBMAIL_WEBKIT_EXECUTABLE=/tmp/webmail-webkit.sh npm run test:e2e -- --reporter=line",
             "passed": 31,
             "failed": 0,
             "skipped": 0,
@@ -73,7 +73,7 @@
         "webkit": "27.2"
     },
     "worker": {
-        "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" npm run test:worker",
+        "command": "rtk proxy env PATH=\"/tmp/webmail-node/node_modules/node/bin:$PATH\" npm run test:worker",
         "passed": 15,
         "failed": 0,
         "exit_code": 0,
@@ -93,19 +93,19 @@
             "result": "passed; 0 errors"
         },
         {
-            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" npm run check",
+            "command": "rtk proxy env PATH=\"/tmp/webmail-node/node_modules/node/bin:$PATH\" npm run check",
             "result": "passed; 129 formatted files, 77 linted files, 0 warnings/errors"
         },
         {
-            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" npm run types:check",
+            "command": "rtk proxy env PATH=\"/tmp/webmail-node/node_modules/node/bin:$PATH\" npm run types:check",
             "result": "passed"
         },
         {
-            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" npm run types:worker",
+            "command": "rtk proxy env PATH=\"/tmp/webmail-node/node_modules/node/bin:$PATH\" npm run types:worker",
             "result": "passed"
         },
         {
-            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" npm run build",
+            "command": "rtk proxy env PATH=\"/tmp/webmail-node/node_modules/node/bin:$PATH\" npm run build",
             "result": "passed; 2356 modules; 4.08 seconds"
         }
     ],
@@ -117,7 +117,7 @@
             "exit_code": 0
         },
         {
-            "command": "rtk proxy env PATH=\"/tmp/postroom-node/node_modules/node/bin:$PATH\" npm audit --json",
+            "command": "rtk proxy env PATH=\"/tmp/webmail-node/node_modules/node/bin:$PATH\" npm audit --json",
             "vulnerabilities": 0,
             "exit_code": 0
         }

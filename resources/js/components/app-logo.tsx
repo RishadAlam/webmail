@@ -1,4 +1,4 @@
-import { Brand } from '@/components/postroom/ui';
+import { Brand } from '@/components/webmail/ui';
 export default function AppLogo() {
     return <Brand />;
 }

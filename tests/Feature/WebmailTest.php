@@ -14,7 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
-class PostroomTest extends TestCase
+class WebmailTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -93,7 +93,7 @@ class PostroomTest extends TestCase
 
     public function test_quota_counts_to_cc_bcc_and_preserves_draft(): void
     {
-        config(['postroom.daily_limit' => 2]);
+        config(['webmail.daily_limit' => 2]);
         [$user, $box] = $this->account();
         $draft = $this->draft($user, $box);
         $draft->update(['cc' => ['c@example.net'], 'bcc' => ['hidden@example.net']]);
@@ -104,7 +104,7 @@ class PostroomTest extends TestCase
 
     public function test_timeout_is_uncertain_and_never_blindly_resent(): void
     {
-        config(['postroom.mock_outcome' => 'timeout']);
+        config(['webmail.mock_outcome' => 'timeout']);
         [$user, $box] = $this->account();
         $draft = $this->draft($user, $box);
         $this->actingAs($user)->postJson('/drafts/'.$draft->id.'/send', ['version' => 1])->assertOk()->assertJsonPath('status', 'uncertain');

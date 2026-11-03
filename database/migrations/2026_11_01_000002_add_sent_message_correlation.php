@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::table('messages', function (Blueprint $table) {
             $table->uuid('send_intent_id')->nullable()->unique();
-            $table->string('provider_message_id', 998)->nullable()->index();
+            $table->string('provider_message_id')->nullable()->index();
         });
     }
 

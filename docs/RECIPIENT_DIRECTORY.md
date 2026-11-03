@@ -12,15 +12,15 @@ An unconfirmed request retries the same revision and content, with a new authent
 
 Only an exact acknowledgement of revision, checksum, and count permits matching local address rows to become `synced`. Provider response bodies, exception details, and credentials are not returned as error messages. A timeout is unconfirmed: the Worker might already have committed it. Never treat an error as proof that the old directory is still active.
 
-Mock mode returns `simulated`, leaves `last_synced_at` null, and marks matching addresses `simulated`. Switching to a real gateway requires a new confirmed synchronization. Internal configuration and `X-Postroom-*` protocol names remain unchanged.
+Mock mode returns `simulated`, leaves `last_synced_at` null, and marks matching addresses `simulated`. Switching to a real gateway requires a new confirmed synchronization. Internal configuration and `X-Webmail-*` protocol names remain unchanged.
 
 ## Worker configuration and protocol
 
-The Worker requires `MAIL_DOMAIN` in addition to its existing secrets/bindings. It must match the application's `MAIL_DOMAIN` (`postroom.domain`). The receiving domain comes only from the Worker environment; request fields cannot change it. Laravel needs no new configuration keys.
+The Worker requires `MAIL_DOMAIN` in addition to its existing secrets/bindings. It must match the application's `MAIL_DOMAIN` (`webmail.domain`). The receiving domain comes only from the Worker environment; request fields cannot change it. Laravel needs no new configuration keys.
 
 For a new D1 database, `worker/schema.sql` includes the directory metadata table. For an existing database, review and apply `worker/migrations/0001_recipient_directory_state.sql` before deploying the endpoint. This migration only adds metadata; it does not modify recipients or accepted spool items. No migration or deployment against an external account has been executed by these tests.
 
-`POST /v1/directory` uses the existing HMAC over timestamp, nonce, method, path, and exact body, with `X-Postroom-Time`, `X-Postroom-Nonce`, and `X-Postroom-Signature`. The JSON body contains:
+`POST /v1/directory` uses the existing HMAC over timestamp, nonce, method, path, and exact body, with `X-Webmail-Time`, `X-Webmail-Nonce`, and `X-Webmail-Signature`. The JSON body contains:
 
 ```json
 {

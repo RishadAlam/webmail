@@ -34,7 +34,7 @@ class ProductionConfiguration
         if (! is_array($url) || ($url['scheme'] ?? null) !== 'https' || empty($url['host']) || ! in_array($url['path'] ?? '', ['', '/'], true) || isset($url['user']) || isset($url['pass']) || isset($url['query']) || isset($url['fragment'])) {
             $errors[] = 'APP_URL must be an HTTPS origin without credentials, path, query or fragment.';
         }
-        if (! $this->publicMailDomain((string) config('postroom.domain'))) {
+        if (! $this->publicMailDomain((string) config('webmail.domain'))) {
             $errors[] = 'MAIL_DOMAIN must be an explicit public receiving domain; local, example and reserved domains are forbidden.';
         }
         $key = (string) config('app.key');

@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import type { PropsWithChildren } from 'react';
-import { Brand } from '@/components/postroom/ui';
+import { Brand } from '@/components/webmail/ui';
 import {
     Card,
     CardContent,

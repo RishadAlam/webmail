@@ -152,7 +152,7 @@ class RecipientDirectory
     /** @return array{checksum:string, recipients:list<array{address:string, active:bool}>, addresses:list<array{id:int, email:string, active:bool}>} */
     private function currentSnapshot(): array
     {
-        $domain = strtolower((string) config('postroom.domain'));
+        $domain = strtolower((string) config('webmail.domain'));
         $rows = Address::orderBy('id')->limit(101)->get(['id', 'email', 'active']);
         if (strlen($domain) > 253 || ! preg_match('/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/D', $domain) || $rows->count() > 100) {
             throw new InvalidArgumentException(self::INVALID_DIRECTORY);
@@ -181,6 +181,6 @@ class RecipientDirectory
     {
         $destination = $this->gateway instanceof RecipientDirectoryGateway ? $this->gateway->directoryTarget() : null;
 
-        return hash('sha256', json_encode([$this->simulated(), $destination, config('postroom.domain')], JSON_THROW_ON_ERROR));
+        return hash('sha256', json_encode([$this->simulated(), $destination, config('webmail.domain')], JSON_THROW_ON_ERROR));
     }
 }

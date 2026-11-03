@@ -6,7 +6,7 @@ Contributions should improve a complete, testable mailbox workflow. This is a st
 
 Read [README.md](README.md) for local setup, [STATUS.md](STATUS.md) for current evidence and [PLAN.md](PLAN.md) for scope. UI work follows [DESIGN.md](DESIGN.md), [MOBILE_UX.md](MOBILE_UX.md) and [UI_ACCEPTANCE.md](UI_ACCEPTANCE.md). Check relevant official documentation before changing provider endpoints, permissions, limits or dependencies; update [SOURCES.md](SOURCES.md) and commit lockfiles.
 
-Use the local mock providers and fictional fixtures. Do not seed a production database, replace an existing `APP_KEY`, put secrets in Git, or use real email in tests or screenshots. Playwright resets only its dedicated `storage/e2e.sqlite` database. PostgreSQL tests must use the dedicated test databases documented in the README.
+Use the local mock providers and fictional fixtures. Do not seed a production database, replace an existing `APP_KEY`, put secrets in Git, or use real email in tests or screenshots. Playwright resets only its dedicated `webmail_e2e` MySQL database. PostgreSQL tests must use the dedicated test databases documented in the README.
 
 ## Propose a change
 
@@ -30,8 +30,8 @@ npm run types:worker
 npm run test:worker
 npm run build
 npm run test:e2e
-POSTROOM_BROWSER=firefox npm run test:e2e
-POSTROOM_BROWSER=webkit npm run test:e2e
+WEBMAIL_BROWSER=firefox npm run test:e2e
+WEBMAIL_BROWSER=webkit npm run test:e2e
 ```
 
 Install Playwright browsers and their OS dependencies as described in the README. Run browser suites sequentially in a shared checkout and do not rebuild assets during a suite. Run PostgreSQL validation for data, authorization, retention or quota changes. Provider mocks, browser emulation and local container tests do not prove live delivery or physical-device behavior.

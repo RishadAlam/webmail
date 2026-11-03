@@ -1,5 +1,5 @@
 {
-    "name": "postroom-ingress",
+    "name": "webmail-ingress",
     "main": "src/index.ts",
     "compatibility_date": "2026-07-01",
     "workers_dev": false,
@@ -7,7 +7,7 @@
     "d1_databases": [
         {
             "binding": "DB",
-            "database_name": "postroom-ingress",
+            "database_name": "webmail-ingress",
             "database_id": "REPLACE_AFTER_APPROVED_BOOTSTRAP",
         },
     ],

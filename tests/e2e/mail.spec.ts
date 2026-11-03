@@ -14,10 +14,10 @@ test.beforeAll(async ({ browser }) => {
     await page.goto('http://127.0.0.1:8010/login');
     await page
         .getByLabel('Email address', { exact: true })
-        .fill('mira@postroom.test');
+        .fill('mira@webmail.test');
     await page
         .getByLabel('Password', { exact: true })
-        .fill('postroom-local-only');
+        .fill('webmail-local-only');
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(
         page.getByRole('heading', { name: 'Inbox', exact: true }),
@@ -452,10 +452,10 @@ test('mobile owner can create and suspend a local account, usage is honest', asy
     await page.goto('http://127.0.0.1:8010/login');
     await page
         .getByLabel('Email address', { exact: true })
-        .fill('owner@postroom.test');
+        .fill('owner@webmail.test');
     await page
         .getByLabel('Password', { exact: true })
-        .fill('postroom-local-only');
+        .fill('webmail-local-only');
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL(/two-factor-challenge/);
     // Fixed fictional seed secret, never a provider or production credential.
@@ -547,10 +547,10 @@ test('logout invalidates private history and account switching isolates mail', a
     ).not.toBeVisible();
     await page
         .getByLabel('Email address', { exact: true })
-        .fill('owner@postroom.test');
+        .fill('owner@webmail.test');
     await page
         .getByLabel('Password', { exact: true })
-        .fill('postroom-local-only');
+        .fill('webmail-local-only');
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await page.locator('input[name="code"]').fill(await fixtureTotp());
     await page.getByRole('button', { name: 'Continue', exact: true }).click();

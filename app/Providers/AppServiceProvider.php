@@ -26,8 +26,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(OutboundMailProvider::class, fn () => config('postroom.provider') === 'mock' ? new MockOutboundProvider : new ResendProvider);
-        $this->app->singleton(IngressGateway::class, fn () => config('postroom.provider') === 'mock' ? new FakeIngressGateway : new WorkerIngressGateway);
+        $this->app->bind(OutboundMailProvider::class, fn () => config('webmail.provider') === 'mock' ? new MockOutboundProvider : new ResendProvider);
+        $this->app->singleton(IngressGateway::class, fn () => config('webmail.provider') === 'mock' ? new FakeIngressGateway : new WorkerIngressGateway);
     }
 
     /**

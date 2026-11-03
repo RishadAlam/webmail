@@ -14,26 +14,24 @@ class BrowserAcceptanceSeeder extends Seeder
 {
     public function run(): void
     {
-        $database = base_path('storage/e2e.sqlite');
-        if (! app()->environment('testing') || config('postroom.provider') !== 'mock'
-            || config('database.default') !== 'sqlite'
-            || config('database.connections.sqlite.database') !== $database
-            || realpath($database) !== $database
-            || DB::connection()->getDatabaseName() !== $database) {
-            throw new \RuntimeException('Browser acceptance fixtures require testing/mock and the exact repository storage/e2e.sqlite database.');
+        if (! app()->environment('testing') || config('webmail.provider') !== 'mock'
+            || config('database.default') !== 'mysql'
+            || config('database.connections.mysql.database') !== 'webmail_test'
+            || DB::connection()->getDatabaseName() !== 'webmail_test') {
+            throw new \RuntimeException('Browser acceptance fixtures require testing/mock and the exact webmail_test MySQL database.');
         }
 
         DB::transaction(function () {
             // Authentication UI cases use their own fixture identity so their
             // deliberate failed logins cannot throttle mailbox regressions.
             $signInUser = User::factory()->create([
-                'name' => 'Fictional Sign-in Reviewer', 'email' => 'signin@postroom.test',
-                'password' => 'postroom-local-only', 'role' => 'member', 'active' => true,
+                'name' => 'Fictional Sign-in Reviewer', 'email' => 'signin@webmail.test',
+                'password' => 'webmail-local-only', 'role' => 'member', 'active' => true,
             ]);
             $signInMailbox = Mailbox::create(['name' => 'Sign-in Review', 'email' => $signInUser->email]);
             $signInMailbox->users()->attach($signInUser->id, ['can_send' => false]);
-            $mira = User::where('email', 'mira@postroom.test')->firstOrFail();
-            $mailbox = Mailbox::firstOrCreate(['email' => 'acceptance-lab@postroom.test'], ['name' => 'Acceptance Lab']);
+            $mira = User::where('email', 'mira@webmail.test')->firstOrFail();
+            $mailbox = Mailbox::firstOrCreate(['email' => 'acceptance-lab@webmail.test'], ['name' => 'Acceptance Lab']);
             $mailbox->users()->syncWithoutDetaching([$mira->id => ['can_send' => true]]);
             Address::firstOrCreate(['email' => $mailbox->email], ['mailbox_id' => $mailbox->id, 'enabled' => true, 'active' => true, 'directory_status' => 'local_only']);
             $start = CarbonImmutable::parse('2026-11-01 12:00:00', 'UTC');
@@ -84,7 +82,7 @@ class BrowserAcceptanceSeeder extends Seeder
             $attachment = "Fictional incoming attachment.\r\nBytes stay intact: caf\xE9.\r\n";
             $body = 'Fictional incoming attachment fixture. Download the retained file to verify its original bytes.';
             $raw = "From: Fictional Acceptance Sender <fictional.sender@example.net>\r\nTo: ".$mailbox->email
-                ."\r\nSubject: Acceptance incoming attachment download\r\nMessage-ID: <acceptance-incoming-attachment@postroom.test>\r\n"
+                ."\r\nSubject: Acceptance incoming attachment download\r\nMessage-ID: <acceptance-incoming-attachment@webmail.test>\r\n"
                 ."MIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=acceptance-download-boundary\r\n\r\n"
                 ."--acceptance-download-boundary\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n".$body."\r\n"
                 ."--acceptance-download-boundary\r\nContent-Type: text/plain; charset=ISO-8859-1\r\n"
@@ -103,10 +101,10 @@ class BrowserAcceptanceSeeder extends Seeder
             'to' => [$mailbox->email], 'cc' => [], 'subject' => $subject, 'body_text' => $body, 'body_html' => null,
             'folder' => 'inbox', 'is_read' => true, 'starred' => false, 'labels' => [], 'has_attachments' => false], ...$overrides];
         $raw = $fields['raw_mime'] ?? 'From: '.$fields['from_name'].' <'.$fields['from_email'].">\r\nTo: ".implode(', ', $fields['to'])
-            ."\r\nCc: ".implode(', ', $fields['cc'])."\r\nSubject: $subject\r\nMessage-ID: <acceptance-$id@postroom.test>\r\nContent-Type: "
+            ."\r\nCc: ".implode(', ', $fields['cc'])."\r\nSubject: $subject\r\nMessage-ID: <acceptance-$id@webmail.test>\r\nContent-Type: "
             .($fields['body_html'] ? 'text/html' : 'text/plain')."; charset=UTF-8\r\n\r\n".($fields['body_html'] ?? $body);
         $fields['raw_mime'] = $raw;
         $fields['logical_bytes'] = strlen($raw) + strlen($body) + strlen($fields['body_html'] ?? '') + strlen(json_encode([$fields['to'], $fields['cc']], JSON_THROW_ON_ERROR));
-        Message::updateOrCreate(['mailbox_id' => $mailbox->id, 'message_id' => '<acceptance-'.$id.'@postroom.test>'], $fields);
+        Message::updateOrCreate(['mailbox_id' => $mailbox->id, 'message_id' => '<acceptance-'.$id.'@webmail.test>'], $fields);
     }
 }

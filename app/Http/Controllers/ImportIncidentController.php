@@ -20,6 +20,6 @@ class ImportIncidentController extends Controller
             return response()->json(['message' => 'Pending imports could not be checked. Review the ingress connection and try again.'], 503);
         }
 
-        return response()->json([...$result, 'checked_at' => now()->toIso8601String(), 'simulated' => config('postroom.provider') === 'mock']);
+        return response()->json([...$result, 'checked_at' => now()->toIso8601String(), 'simulated' => config('webmail.provider') === 'mock']);
     }
 }

@@ -37,7 +37,7 @@ class AdminController extends Controller
             'directory' => $directory->status(), 'limits' => $administration->limits(),
             'deliveries' => SendIntent::select(['id', 'status', 'recipients', 'last_error', 'created_at'])->latest()->limit(30)->get(),
             'importIncidents' => app(ImportIncidents::class)->summary(),
-            'audits' => DB::table('audit_events')->latest('id')->limit(30)->get(), 'simulation' => config('postroom.provider') === 'mock',
+            'audits' => DB::table('audit_events')->latest('id')->limit(30)->get(), 'simulation' => config('webmail.provider') === 'mock',
             'returnMailbox' => $request->user()->mailboxes()->first()?->id]);
     }
 

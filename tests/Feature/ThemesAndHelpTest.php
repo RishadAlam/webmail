@@ -43,7 +43,7 @@ class ThemesAndHelpTest extends TestCase
     public function test_setup_guide_is_available_before_sign_in_with_no_runtime_secrets(): void
     {
         $this->withoutVite();
-        config(['postroom.worker_secret' => 'test-runtime-secret-not-for-help']);
+        config(['webmail.worker_secret' => 'test-runtime-secret-not-for-help']);
         $response = $this->get('/help/setup')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('help/guide')->where('title', 'Set up WebMail')
             ->has('contents')->where('auth.user', null)

@@ -49,7 +49,7 @@ services:
             value: warning
           - key: STRICT_FREE_MODE
             value: 'true'
-          - key: POSTROOM_PROVIDER
+          - key: WEBMAIL_PROVIDER
             value: resend
           - key: EXTERNAL_SENDING_ENABLED
             value: 'false'

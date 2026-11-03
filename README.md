@@ -60,7 +60,7 @@ Laravel **13.39.0** is pinned in `composer.lock`; frontend and Worker dependenci
 
 ## Run locally with Docker and PostgreSQL
 
-Docker Compose is the production-compatible database profile. Its database lives in the `postroom-db` named volume; the PHP development server is local-only. These setup commands are for a new checkout. Keep an existing `.env` and `APP_KEY`; replacing the key makes encrypted stored mail unreadable.
+Docker Compose is the production-compatible database profile. Its database lives in the `webmail-db` named volume; the PHP development server is local-only. These setup commands are for a new checkout. Keep an existing `.env` and `APP_KEY`; replacing the key makes encrypted stored mail unreadable.
 
 ```sh
 git clone https://github.com/RishadAlam/webmail.git
@@ -78,17 +78,16 @@ docker compose up -d
 
 Open [WebMail locally](http://localhost:8082). Normal restarts only need `docker compose up -d`. Do not use `down -v` unless you intend to delete the local database. This is not a Render production image.
 
-The fictional demo member is `mira@postroom.test`, password `postroom-local-only`. The fictional owner is `owner@postroom.test`, with the same password and the local-only authenticator seed `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`. The demo recovery code is `fictional-recovery-code`. These are public fixtures, never production credentials. The seed refuses to run outside local/testing mock mode. The owner cannot read Mira's mailbox.
+The fictional demo member is `mira@webmail.test`, password `webmail-local-only`. The fictional owner is `owner@webmail.test`, with the same password and the local-only authenticator seed `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`. The demo recovery code is `fictional-recovery-code`. These are public fixtures, never production credentials. The seed refuses to run outside local/testing mock mode. The owner cannot read Mira's mailbox.
 
 ## Direct local profile
 
-Requires PHP 8.4+, Composer 2, and Node 22.18+ or 24.11+. The verified local Node release was 22.23.4. Install the PHP extensions required by `composer check-platform-reqs`, including SQLite for this convenience profile.
+Requires PHP 8.4+, Composer 2, Node 22.18+ or 24.11+, and a MySQL 8+ server. The verified local Node release was 22.23.4. Install the PHP extensions required by `composer check-platform-reqs`, including PDO MySQL.
 
 ```sh
 cp -n .env.example .env
 composer install
 php artisan key:generate
-php -r "if (!is_file('database/database.sqlite')) touch('database/database.sqlite');"
 php artisan migrate
 php artisan db:seed --class=DemoSeeder
 npm ci
@@ -96,7 +95,7 @@ npm run build
 php artisan serve --no-reload --host=127.0.0.1 --port=8000
 ```
 
-SQLite is only a local convenience. Production startup refuses non-PostgreSQL storage. `npm run dev` is available for development; browser/security evidence uses the built assets and the normal CSP. No paid editor extension or external font service is needed.
+Local development uses MySQL. Production startup refuses non-PostgreSQL storage. `npm run dev` is available for development; browser/security evidence uses the built assets and the normal CSP. No paid editor extension or external font service is needed.
 
 The local and test servers use `--no-reload` so Laravel preserves inherited database and security settings when starting PHP. Restart the server after changing environment configuration; PHP source changes still apply on the next request. Without this flag, the server can silently fall back to `.env` instead of the Compose or Playwright database.
 
@@ -114,11 +113,11 @@ npm run test:frontend
 npm run build
 npx playwright install chromium firefox webkit
 npm run test:e2e
-POSTROOM_BROWSER=firefox npm run test:e2e
-POSTROOM_BROWSER=webkit npm run test:e2e
+WEBMAIL_BROWSER=firefox npm run test:e2e
+WEBMAIL_BROWSER=webkit npm run test:e2e
 ```
 
-Playwright owns only `storage/e2e.sqlite`, seeds fictional messages, starts port 8010, and applies a deliberately small two-recipient daily test cap. It does not reset the normal application database. The guarded acceptance seeder adds a separate mailbox with 79 messages for paging, long conversations, newsletter/details and incoming attachment checks, plus a dedicated sign-in test identity; the original 17-message inbox remains intact. Browsers may require OS libraries (`npx playwright install-deps`); physical devices remain a separate gate. Traces and authentication state are ignored by source control. Screenshots in `docs/ui-evidence` and `docs/review/final` contain fictional data only. Do not rebuild shared frontend assets while browser tests are running.
+Playwright owns only the disposable `webmail_e2e` MySQL database, seeds fictional messages, starts port 8010, and applies a deliberately small two-recipient daily test cap. It does not reset the normal application database. The guarded acceptance seeder adds a separate mailbox with 79 messages for paging, long conversations, newsletter/details and incoming attachment checks, plus a dedicated sign-in test identity; the original 17-message inbox remains intact. Browsers may require OS libraries (`npx playwright install-deps`); physical devices remain a separate gate. Traces and authentication state are ignored by source control. Screenshots in `docs/ui-evidence` and `docs/review/final` contain fictional data only. Do not rebuild shared frontend assets while browser tests are running.
 
 On macOS 27, the pinned Firefox 157 test binary can fail before loading a page with “Profile missing.” The verified local workaround gives the test process its own ignored application-data directories; it does not touch a personal Firefox profile:
 
@@ -126,21 +125,21 @@ On macOS 27, the pinned Firefox 157 test binary can fail before loading a page w
 mkdir -p storage/app/firefox-test-data/{app-data,local-data}
 MOZ_APP_DATA="$PWD/storage/app/firefox-test-data/app-data" \
 MOZ_LOCAL_APP_DATA="$PWD/storage/app/firefox-test-data/local-data" \
-POSTROOM_BROWSER=firefox npm run test:e2e
+WEBMAIL_BROWSER=firefox npm run test:e2e
 ```
 
 See the [upstream references](SOURCES.md#macos-browser-verification--november-1-2026) and [current verification report](docs/UI_REPORT.md). This is a test-launch workaround, not an application or browser security-policy change.
 
-For PostgreSQL checks, first create **dedicated disposable** databases `postroom_test`, `postroom_concurrency`, and `postroom_auth_e2e` in the local container. The concurrency and HTTP authentication scripts each enforce their own database name and testing environment:
+For PostgreSQL checks, first create **dedicated disposable** databases `webmail_test`, `webmail_concurrency`, and `webmail_auth_e2e` in the local container. The concurrency and HTTP authentication scripts each enforce their own database name and testing environment:
 
 ```sh
-docker compose exec -T postgres createdb -U postroom postroom_test
-docker compose exec -T postgres createdb -U postroom postroom_concurrency
-docker compose exec -T postgres createdb -U postroom postroom_auth_e2e
-docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_test app php artisan test
-docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_concurrency app php scripts/verify-concurrency.php
-docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_auth_e2e app php artisan migrate --force
-docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_auth_e2e app php scripts/verify-auth-runtime.php
+docker compose exec -T postgres createdb -U webmail webmail_test
+docker compose exec -T postgres createdb -U webmail webmail_concurrency
+docker compose exec -T postgres createdb -U webmail webmail_auth_e2e
+docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=webmail_test app php artisan test
+docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=webmail_concurrency app php scripts/verify-concurrency.php
+docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=webmail_auth_e2e app php artisan migrate --force
+docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=webmail_auth_e2e app php scripts/verify-auth-runtime.php
 ```
 
 ## Implemented boundaries
@@ -169,7 +168,7 @@ Provider account creation/authorization, initial hosting/database deployment, ap
 
 Go-live still needs the unfinished provisioning/reconciliation work, actual free-account verification, real Cloudflare/Resend mail tests, Worker Free CPU measurement, Neon TLS and off-machine backup/restore, hosted cold-start observation and physical-device acceptance. See [PLAN.md](PLAN.md), [SOURCES.md](SOURCES.md) and [STATUS.md](STATUS.md). The [Gmail comparison](docs/GMAIL_COMPARISON.md) explains the UI choices and their evidence limits.
 
-Existing configuration keys, database names, protocol headers, source directories and fictional `postroom.test` identities retain their legacy names to preserve compatibility. They are internal identifiers, not the displayed product name.
+Existing configuration keys, database names, protocol headers, source directories and fictional `webmail.test` identities retain their legacy names to preserve compatibility. They are internal identifiers, not the displayed product name.
 
 ## Documentation
 

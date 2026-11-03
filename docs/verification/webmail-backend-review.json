@@ -15,10 +15,10 @@
         "skip_reason": "Existing tests for disabled registration, email verification, and email-based password recovery features"
     },
     "server_postgresql": {
-        "database_verification_command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_test app php -r 'require \"vendor/autoload.php\"; $app = require \"bootstrap/app.php\"; $app->make(\\Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); fwrite(STDOUT, \\Illuminate\\Support\\Facades\\DB::scalar(\"select current_database()\").PHP_EOL);'",
-        "database_verification_output": "postroom_test",
-        "command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_test app php artisan test --compact",
-        "database": "postroom_test",
+        "database_verification_command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=webmail_test app php -r 'require \"vendor/autoload.php\"; $app = require \"bootstrap/app.php\"; $app->make(\\Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); fwrite(STDOUT, \\Illuminate\\Support\\Facades\\DB::scalar(\"select current_database()\").PHP_EOL);'",
+        "database_verification_output": "webmail_test",
+        "command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=webmail_test app php artisan test --compact",
+        "database": "webmail_test",
         "result": "passed",
         "tests": 189,
         "passed": 173,
@@ -26,12 +26,12 @@
         "assertions": 897,
         "duration_seconds": 8.35,
         "exit_code": 0,
-        "isolation": "Verified current_database() in the exact environment before the suite; main postroom database was not migrated or reset"
+        "isolation": "Verified current_database() in the exact environment before the suite; main webmail database was not migrated or reset"
     },
     "postgresql_concurrency": {
-        "database_verification_command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_concurrency app php -r 'require \"vendor/autoload.php\"; $app = require \"bootstrap/app.php\"; $app->make(\\Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); fwrite(STDOUT, \\Illuminate\\Support\\Facades\\DB::scalar(\"select current_database()\").PHP_EOL);'",
-        "database_verification_output": "postroom_concurrency",
-        "command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_concurrency app php scripts/verify-concurrency.php",
+        "database_verification_command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=webmail_concurrency app php -r 'require \"vendor/autoload.php\"; $app = require \"bootstrap/app.php\"; $app->make(\\Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); fwrite(STDOUT, \\Illuminate\\Support\\Facades\\DB::scalar(\"select current_database()\").PHP_EOL);'",
+        "database_verification_output": "webmail_concurrency",
+        "command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=webmail_concurrency app php scripts/verify-concurrency.php",
         "result": "passed",
         "exit_code": 0,
         "last_slot_competitors": 6,
@@ -42,9 +42,9 @@
         "isolation": "The script checks APP_ENV=testing, PostgreSQL, and database name before migrate:fresh on this disposable database"
     },
     "http_auth_runtime": {
-        "database_verification_command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_auth_e2e app php -r 'require \"vendor/autoload.php\"; $app = require \"bootstrap/app.php\"; $app->make(\\Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); fwrite(STDOUT, \\Illuminate\\Support\\Facades\\DB::scalar(\"select current_database()\").PHP_EOL);'",
-        "database_verification_output": "postroom_auth_e2e",
-        "migration_command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_auth_e2e app php artisan migrate --force",
+        "database_verification_command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=webmail_auth_e2e app php -r 'require \"vendor/autoload.php\"; $app = require \"bootstrap/app.php\"; $app->make(\\Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); fwrite(STDOUT, \\Illuminate\\Support\\Facades\\DB::scalar(\"select current_database()\").PHP_EOL);'",
+        "database_verification_output": "webmail_auth_e2e",
+        "migration_command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=webmail_auth_e2e app php artisan migrate --force",
         "migrations_applied": [
             "2026_11_01_000004_create_recipient_directory_syncs",
             "2026_11_01_000005_add_message_reply_addresses",
@@ -54,7 +54,7 @@
             "2026_11_01_000009_retain_receipts_after_message_deletion"
         ],
         "migration_exit_code": 0,
-        "command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_auth_e2e app php scripts/verify-auth-runtime.php",
+        "command": "rtk proxy docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=webmail_auth_e2e app php scripts/verify-auth-runtime.php",
         "result": "passed",
         "exit_code": 0,
         "http_flow": [
@@ -69,15 +69,15 @@
             "GET /admin after logout -> 302 /login"
         ],
         "startup": "Actual Dockerfile.local startup command on a temporary loopback HTTP port",
-        "isolation": "Guarded APP_ENV=testing and postroom_auth_e2e only; no shared browser or main database operations"
+        "isolation": "Guarded APP_ENV=testing and webmail_auth_e2e only; no shared browser or main database operations"
     },
     "worker": {
-        "command": "rtk proxy /tmp/postroom-node/node_modules/node/bin/node --import tsx --test worker/tests/ingress.test.ts",
+        "command": "rtk proxy /tmp/webmail-node/node_modules/node/bin/node --import tsx --test worker/tests/ingress.test.ts",
         "result": "passed",
         "passed": 15,
         "exit_code": 0,
         "environment": "Local Miniflare and SQLite-backed D1 emulation; not deployed Cloudflare",
-        "typecheck_command": "rtk proxy /tmp/postroom-node/node_modules/node/bin/node node_modules/typescript/bin/tsc -p worker/tsconfig.json --noEmit",
+        "typecheck_command": "rtk proxy /tmp/webmail-node/node_modules/node/bin/node node_modules/typescript/bin/tsc -p worker/tsconfig.json --noEmit",
         "typecheck_exit_code": 0
     },
     "static_analysis": {

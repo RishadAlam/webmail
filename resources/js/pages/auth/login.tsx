@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Form, Head } from '@inertiajs/react';
 import { ArrowRight, ChevronDown, LoaderCircle } from 'lucide-react';
-import { Brand } from '@/components/postroom/ui';
+import { Brand } from '@/components/webmail/ui';
 export default function Login({
     status,
 }: {

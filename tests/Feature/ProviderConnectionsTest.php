@@ -23,14 +23,14 @@ class ProviderConnectionsTest extends TestCase
         parent::setUp();
         $this->withoutVite();
         Http::preventStrayRequests();
-        config(['postroom.resend_key' => null, 'postroom.resend_management_key' => null, 'postroom.cloudflare_token' => null,
-            'postroom.worker_url' => null, 'postroom.worker_secret' => null, 'postroom.sending_enabled' => false]);
+        config(['webmail.resend_key' => null, 'webmail.resend_management_key' => null, 'webmail.cloudflare_token' => null,
+            'webmail.worker_url' => null, 'webmail.worker_secret' => null, 'webmail.sending_enabled' => false]);
     }
 
     private function owner(): User
     {
         $owner = User::factory()->withTwoFactor()->create(['role' => 'owner']);
-        $this->actingAs($owner)->withSession(['postroom.mfa_user' => $owner->id, 'auth.password_confirmed_at' => time()]);
+        $this->actingAs($owner)->withSession(['webmail.mfa_user' => $owner->id, 'auth.password_confirmed_at' => time()]);
 
         return $owner;
     }
@@ -50,7 +50,7 @@ class ProviderConnectionsTest extends TestCase
     public function test_members_and_administrators_cannot_read_change_clear_or_test_connections(string $role): void
     {
         $user = User::factory()->withTwoFactor()->create(['role' => $role]);
-        $this->actingAs($user)->withSession(['postroom.mfa_user' => $user->id, 'auth.password_confirmed_at' => time()]);
+        $this->actingAs($user)->withSession(['webmail.mfa_user' => $user->id, 'auth.password_confirmed_at' => time()]);
         $this->getJson('/admin/connections')->assertForbidden();
         $this->putJson('/admin/connections', ['resend_key' => 're_fictional_secret'])->assertForbidden();
         $this->deleteJson('/admin/connections/resend_key')->assertForbidden();
@@ -62,7 +62,7 @@ class ProviderConnectionsTest extends TestCase
     {
         $owner = User::factory()->withTwoFactor()->create(['role' => 'owner']);
         $this->actingAs($owner)->getJson('/admin/connections')->assertForbidden();
-        $this->withSession(['postroom.mfa_user' => $owner->id])->getJson('/admin/connections')->assertOk();
+        $this->withSession(['webmail.mfa_user' => $owner->id])->getJson('/admin/connections')->assertOk();
         $this->putJson('/admin/connections', ['resend_key' => 're_fictional_secret'])->assertStatus(423);
     }
 
@@ -85,7 +85,7 @@ class ProviderConnectionsTest extends TestCase
     public function test_blank_preserves_secret_and_explicit_clear_disables_environment_fallback(): void
     {
         $this->owner();
-        config(['postroom.resend_key' => 're_fictional_environment_key']);
+        config(['webmail.resend_key' => 're_fictional_environment_key']);
         $this->putJson('/admin/connections', ['resend_key' => 're_fictional_saved_key'])->assertOk();
         $this->putJson('/admin/connections', ['resend_key' => ''])->assertOk();
         $this->assertSame('re_fictional_saved_key', app(ConnectionConfiguration::class)->value('resend_key'));
@@ -96,7 +96,7 @@ class ProviderConnectionsTest extends TestCase
     public function test_mock_check_never_contacts_provider_or_claims_live_verification(): void
     {
         $this->owner();
-        config(['postroom.provider' => 'mock']);
+        config(['webmail.provider' => 'mock']);
         $this->putJson('/admin/connections', ['resend_management_key' => 're_fictional_management_key'])->assertOk();
         $this->postJson('/admin/connections/resend_management/test')->assertOk()->assertJsonPath('checks.resend_management.status', 'mock');
         Http::assertNothingSent();
@@ -105,7 +105,7 @@ class ProviderConnectionsTest extends TestCase
     public function test_resend_management_check_uses_saved_management_key_and_does_not_send_mail(): void
     {
         $this->owner();
-        config(['postroom.provider' => 'resend']);
+        config(['webmail.provider' => 'resend']);
         $key = 're_fictional_management_key';
         $this->putJson('/admin/connections', ['resend_management_key' => $key])->assertOk()->assertJsonPath('checks.resend_management.status', 'unchecked');
         Http::fake(['https://api.resend.com/usage' => Http::response($this->usage())]);
@@ -119,17 +119,17 @@ class ProviderConnectionsTest extends TestCase
     public function test_environment_credential_rotation_invalidates_a_previous_check(): void
     {
         $this->owner();
-        config(['postroom.provider' => 'resend', 'postroom.resend_management_key' => 're_fictional_environment_key']);
+        config(['webmail.provider' => 'resend', 'webmail.resend_management_key' => 're_fictional_environment_key']);
         Http::fake(['https://api.resend.com/usage' => Http::response($this->usage())]);
         $this->postJson('/admin/connections/resend_management/test')->assertOk()->assertJsonPath('checks.resend_management.status', 'checked');
-        config(['postroom.resend_management_key' => 're_replacement_environment_key']);
+        config(['webmail.resend_management_key' => 're_replacement_environment_key']);
         $this->getJson('/admin/connections')->assertOk()->assertJsonPath('checks.resend_management.status', 'unchecked');
     }
 
     public function test_runtime_sender_uses_saved_secret_and_explicit_clear_disables_it(): void
     {
         $this->owner();
-        config(['postroom.provider' => 'resend', 'postroom.sending_enabled' => true, 'postroom.resend_key' => 're_old_environment_key']);
+        config(['webmail.provider' => 'resend', 'webmail.sending_enabled' => true, 'webmail.resend_key' => 're_old_environment_key']);
         $secret = 're_fictional_saved_sending_key';
         $this->putJson('/admin/connections', ['resend_key' => $secret])->assertOk();
         Http::fake(['https://api.resend.com/emails' => Http::response(['id' => 'fictional-provider-id'])]);
@@ -154,7 +154,7 @@ class ProviderConnectionsTest extends TestCase
     public function test_sending_key_cannot_be_verified_as_management_key(): void
     {
         $this->owner();
-        config(['postroom.provider' => 'resend']);
+        config(['webmail.provider' => 'resend']);
         $this->putJson('/admin/connections', ['resend_key' => 're_fictional_sending_only'])->assertOk();
         $this->postJson('/admin/connections/resend_management/test')->assertUnprocessable()->assertJsonPath('checks.resend_management.status', 'not_configured');
         $this->postJson('/admin/connections/resend_key/test')->assertUnprocessable();
@@ -164,7 +164,7 @@ class ProviderConnectionsTest extends TestCase
     public function test_provider_failure_is_sanitized_and_does_not_echo_key_or_upstream_body(): void
     {
         $this->owner();
-        config(['postroom.provider' => 'resend']);
+        config(['webmail.provider' => 'resend']);
         $secret = 're_fictional_management_key';
         $this->putJson('/admin/connections', ['resend_management_key' => $secret])->assertOk();
         Http::fake(['https://api.resend.com/usage' => Http::response(['message' => 'sensitive-provider-detail '.$secret], 403)]);
@@ -177,7 +177,7 @@ class ProviderConnectionsTest extends TestCase
     public function test_cloudflare_check_reads_only_configured_domain_zone_and_dns(): void
     {
         $this->owner();
-        config(['postroom.provider' => 'resend', 'postroom.domain' => 'fictional.example']);
+        config(['webmail.provider' => 'resend', 'webmail.domain' => 'fictional.example']);
         $token = 'fictional_cloudflare_read_token';
         $zone = str_repeat('a', 32);
         $this->putJson('/admin/connections', ['cloudflare_token' => $token])->assertOk();
@@ -214,14 +214,14 @@ class ProviderConnectionsTest extends TestCase
             return Http::response(['items' => []]);
         });
         $this->assertSame([], (new WorkerIngressGateway)->claim());
-        Http::assertSent(fn ($r) => $r->url() === 'https://fictional.account.workers.dev/v1/claim' && $r->hasHeader('X-Postroom-Signature') && ! str_contains($r->body(), $secret));
+        Http::assertSent(fn ($r) => $r->url() === 'https://fictional.account.workers.dev/v1/claim' && $r->hasHeader('X-Webmail-Signature') && ! str_contains($r->body(), $secret));
         $this->assertFalse($redirects);
     }
 
     public function test_directory_target_changes_with_the_effective_saved_worker_origin(): void
     {
         $this->owner();
-        config(['postroom.worker_url' => 'https://original.account.workers.dev']);
+        config(['webmail.worker_url' => 'https://original.account.workers.dev']);
         $gateway = new WorkerIngressGateway;
         $this->assertSame(hash('sha256', 'https://original.account.workers.dev'), $gateway->directoryTarget());
         $this->putJson('/admin/connections', ['worker_url' => 'https://replacement.account.workers.dev'])->assertOk();
@@ -232,17 +232,17 @@ class ProviderConnectionsTest extends TestCase
     public function test_explicit_bootstrap_worker_origin_is_allowed_but_domain_is_not_editable(): void
     {
         $this->owner();
-        config(['postroom.worker_url' => 'https://ingress.fictional.example']);
+        config(['webmail.worker_url' => 'https://ingress.fictional.example']);
         $this->putJson('/admin/connections', ['worker_url' => 'https://ingress.fictional.example'])->assertOk();
         $this->putJson('/admin/connections', ['domain' => 'attacker.example'])->assertUnprocessable();
         $this->putJson('/admin/connections', ['sending_enabled' => true])->assertUnprocessable();
-        $this->assertFalse(config('postroom.sending_enabled'));
+        $this->assertFalse(config('webmail.sending_enabled'));
     }
 
     public function test_invalid_bootstrap_worker_url_is_hidden_and_cannot_make_a_request(): void
     {
         $this->owner();
-        config(['postroom.worker_url' => 'https://fictional-user:fictional-secret@127.0.0.1', 'postroom.worker_secret' => str_repeat('f', 40)]);
+        config(['webmail.worker_url' => 'https://fictional-user:fictional-secret@127.0.0.1', 'webmail.worker_secret' => str_repeat('f', 40)]);
         $this->getJson('/admin/connections')->assertOk()->assertJsonPath('fields.worker_url.configured', false)
             ->assertJsonPath('fields.worker_url.value', null)->assertDontSee('fictional-secret');
         $this->assertSame(hash('sha256', 'https://fictional-user:fictional-secret@127.0.0.1'), (new WorkerIngressGateway)->directoryTarget());
@@ -258,7 +258,7 @@ class ProviderConnectionsTest extends TestCase
     public function test_credentials_service_can_read_environment_before_its_migration(): void
     {
         Schema::drop('provider_connections');
-        config(['postroom.resend_key' => 're_fictional_bootstrap_key']);
+        config(['webmail.resend_key' => 're_fictional_bootstrap_key']);
         $this->assertSame('re_fictional_bootstrap_key', app(ConnectionConfiguration::class)->value('resend_key'));
     }
 }

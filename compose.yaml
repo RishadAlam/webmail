@@ -1,15 +1,15 @@
-name: postroom-local
+name: webmail-local
 services:
     postgres:
         image: postgres:17@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
         environment:
-            POSTGRES_DB: postroom
-            POSTGRES_USER: postroom
+            POSTGRES_DB: webmail
+            POSTGRES_USER: webmail
             POSTGRES_PASSWORD: local-development-only
         volumes:
-            - postroom-db:/var/lib/postgresql/data
+            - webmail-db:/var/lib/postgresql/data
         healthcheck:
-            test: ['CMD-SHELL', 'pg_isready -U postroom']
+            test: ['CMD-SHELL', 'pg_isready -U webmail']
             interval: 3s
             timeout: 3s
             retries: 20
@@ -26,13 +26,13 @@ services:
             DB_CONNECTION: pgsql
             DB_HOST: postgres
             DB_PORT: '5432'
-            DB_DATABASE: postroom
-            DB_USERNAME: postroom
+            DB_DATABASE: webmail
+            DB_USERNAME: webmail
             DB_PASSWORD: local-development-only
             DB_URL: ''
-            POSTROOM_PROVIDER: mock
+            WEBMAIL_PROVIDER: mock
         depends_on:
             postgres:
                 condition: service_healthy
 volumes:
-    postroom-db:
+    webmail-db:

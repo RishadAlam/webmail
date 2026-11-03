@@ -21,7 +21,7 @@ class AccountSuspensionTest extends TestCase
         $cookie = $login->getCookie($recallerName)->getValue();
         $oldToken = $member->fresh()->remember_token;
 
-        $this->actingAs($owner)->withSession(['postroom.mfa_user' => $owner->id])
+        $this->actingAs($owner)->withSession(['webmail.mfa_user' => $owner->id])
             ->patchJson('/admin/people/'.$member->id, ['active' => false])->assertOk();
         $this->patchJson('/admin/people/'.$member->id, ['active' => true])->assertOk();
 

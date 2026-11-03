@@ -2,7 +2,7 @@
 
 Date: November 1, 2026. User authorization: compare the entire application with Gmail UI/UX and colors, fix verified issues, rename the product to **WebMail by Hookstack**, and prepare it for production while preserving the existing strict-free architecture and security requirements.
 
-The existing DESIGN.md, MOBILE_UX.md, UI_ACCEPTANCE.md and CODEX_PROMPT.md remain the specification; the user's new name supersedes their Postroom branding. The implementation builds on Laravel/React/Inertia and the existing database. No Google branding or authentication imitation, paid resource activation, real-mail fixtures, silent DNS changes, or invented verification.
+The existing DESIGN.md, MOBILE_UX.md, UI_ACCEPTANCE.md and CODEX_PROMPT.md remain the specification; the user's new name supersedes their Webmail branding. The implementation builds on Laravel/React/Inertia and the existing database. No Google branding or authentication imitation, paid resource activation, real-mail fixtures, silent DNS changes, or invented verification.
 
 ## Approach and boundaries
 

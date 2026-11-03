@@ -21,7 +21,7 @@ class AdminMailboxTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
-        config(['postroom.provider' => 'mock', 'postroom.domain' => 'postroom.test']);
+        config(['webmail.provider' => 'mock', 'webmail.domain' => 'webmail.test']);
     }
 
     public function test_member_and_administrator_without_session_mfa_cannot_perform_account_or_mailbox_changes(): void
@@ -81,13 +81,13 @@ class AdminMailboxTest extends TestCase
         $this->postJson('/admin/mailboxes/'.$box->id.'/aliases', ['address' => 'team@foreign.test'])->assertUnprocessable();
         $this->postJson('/admin/mailboxes/'.$box->id.'/aliases', ['address' => '*'])->assertUnprocessable();
         $this->postJson('/admin/mailboxes/'.$box->id.'/aliases', ['address' => 'team'])->assertCreated();
-        $alias = Address::where('email', 'team@postroom.test')->firstOrFail();
+        $alias = Address::where('email', 'team@webmail.test')->firstOrFail();
         $this->assertSame('pending', $alias->directory_status);
         $this->postJson('/admin/mailboxes/'.$other->id.'/aliases', ['address' => 'team'])->assertUnprocessable();
         $this->patchJson('/admin/mailboxes/'.$other->id.'/aliases/'.$alias->id, ['active' => false])->assertNotFound();
         $this->assertTrue($alias->fresh()->active);
         for ($i = 3; $i < 100; $i++) {
-            Address::create(['mailbox_id' => $box->id, 'email' => "limit$i@postroom.test"]);
+            Address::create(['mailbox_id' => $box->id, 'email' => "limit$i@webmail.test"]);
         }
         $this->postJson('/admin/mailboxes/'.$box->id.'/aliases', ['address' => 'overflow'])->assertUnprocessable();
         $this->assertDatabaseCount('addresses', 100);
@@ -131,7 +131,7 @@ class AdminMailboxTest extends TestCase
         [, $other] = $this->account();
         $box->update(['quota_bytes' => 1048576]);
         $other->update(['quota_bytes' => 1048576]);
-        config(['postroom.organization_bytes' => 2097152]);
+        config(['webmail.organization_bytes' => 2097152]);
         $this->owner();
 
         $this->patchJson('/admin/mailboxes/'.$box->id.'/quota', ['quota_bytes' => 2097152])->assertUnprocessable();
@@ -145,7 +145,7 @@ class AdminMailboxTest extends TestCase
         [$member, $box] = $this->account();
         $this->owner();
         $this->postJson('/admin/mailboxes/'.$box->id.'/aliases', ['address' => 'disabled'])->assertCreated();
-        $alias = Address::where('email', 'disabled@postroom.test')->firstOrFail();
+        $alias = Address::where('email', 'disabled@webmail.test')->firstOrFail();
         $this->patchJson('/admin/mailboxes/'.$box->id.'/aliases/'.$alias->id, ['active' => false])->assertOk();
         $this->patchJson('/admin/people/'.$member->id, ['active' => false])->assertOk();
         $this->patchJson('/admin/people/'.$member->id, ['active' => true])->assertOk();
@@ -166,12 +166,12 @@ class AdminMailboxTest extends TestCase
         $payload = ['name' => 'Fictional support', 'address' => 'support', 'user_id' => $member->id, 'can_send' => false, 'quota_bytes' => 1048576];
         $this->postJson('/admin/mailboxes', [...$payload, 'user_id' => $owner->id])->assertUnprocessable();
         $this->postJson('/admin/mailboxes', $payload)->assertCreated();
-        $box = Mailbox::where('email', 'support@postroom.test')->firstOrFail();
+        $box = Mailbox::where('email', 'support@webmail.test')->firstOrFail();
         $this->assertTrue($member->can('view', $box));
         $this->assertFalse($member->can('send', $box));
         $this->assertFalse($owner->can('view', $box));
         for ($i = 1; $i < 10; $i++) {
-            Mailbox::create(['name' => 'Bounded', 'email' => "box$i@postroom.test", 'quota_bytes' => 1048576]);
+            Mailbox::create(['name' => 'Bounded', 'email' => "box$i@webmail.test", 'quota_bytes' => 1048576]);
         }
         $this->postJson('/admin/mailboxes', [...$payload, 'address' => 'overflow'])->assertUnprocessable();
         $this->assertDatabaseCount('mailboxes', 10);
@@ -207,14 +207,14 @@ class AdminMailboxTest extends TestCase
     private function owner(): User
     {
         $owner = User::factory()->withTwoFactor()->create(['role' => 'owner']);
-        $this->actingAs($owner)->withSession(['postroom.mfa_user' => $owner->id]);
+        $this->actingAs($owner)->withSession(['webmail.mfa_user' => $owner->id]);
 
         return $owner;
     }
 
     private function account(): array
     {
-        $member = User::factory()->create(['email' => 'member'.User::count().'@postroom.test']);
+        $member = User::factory()->create(['email' => 'member'.User::count().'@webmail.test']);
         $box = Mailbox::create(['name' => 'Fictional mailbox', 'email' => $member->email]);
         $box->users()->attach($member, ['can_send' => true]);
         Address::create(['mailbox_id' => $box->id, 'email' => $member->email, 'active' => true]);

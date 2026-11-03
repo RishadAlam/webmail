@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Brand } from '@/components/postroom/ui';
+import { Brand } from '@/components/webmail/ui';
 import { home } from '@/routes';
 import type { AuthLayoutProps } from '@/types';
 

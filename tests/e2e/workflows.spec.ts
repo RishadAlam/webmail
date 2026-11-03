@@ -241,10 +241,10 @@ test.beforeAll(async ({ browser }, info) => {
         if (new URL(page.url()).pathname === '/login') {
             await page
                 .getByLabel('Email address', { exact: true })
-                .fill('mira@postroom.test');
+                .fill('mira@webmail.test');
             await page
                 .getByLabel('Password', { exact: true })
-                .fill('postroom-local-only');
+                .fill('webmail-local-only');
             await page
                 .getByRole('button', { name: 'Sign in', exact: true })
                 .click();
@@ -1435,7 +1435,7 @@ test('workflows: advanced search combines fields and restores them when reopened
         .fill('fictional.sender@example.net');
     await sheet
         .getByLabel('To', { exact: true })
-        .fill('acceptance-lab@postroom.test');
+        .fill('acceptance-lab@webmail.test');
     await sheet
         .getByLabel('Subject', { exact: true })
         .fill('Acceptance incoming attachment');
@@ -1458,7 +1458,7 @@ test('workflows: advanced search combines fields and restores them when reopened
         'fictional.sender@example.net',
     );
     await expect(sheet.getByLabel('To', { exact: true })).toHaveValue(
-        'acceptance-lab@postroom.test',
+        'acceptance-lab@webmail.test',
     );
     await expect(sheet.getByLabel('Subject', { exact: true })).toHaveValue(
         'Acceptance incoming attachment',

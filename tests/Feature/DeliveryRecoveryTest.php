@@ -30,7 +30,7 @@ class DeliveryRecoveryTest extends TestCase
         Address::create(['mailbox_id' => $box->id, 'email' => $user->email, 'active' => true]);
         $draft = Draft::create(['user_id' => $user->id, 'mailbox_id' => $box->id, 'from_email' => $user->email, 'to' => ['reader@example.net'], 'cc' => [], 'bcc' => [], 'subject' => 'Saved intent', 'body' => '<p>Original body.</p>', 'status' => 'queued']);
         $id = (string) Str::uuid();
-        $intent = SendIntent::create(['id' => $id, 'draft_id' => $draft->id, 'user_id' => $user->id, 'mailbox_id' => $box->id, 'recipients' => 1, 'status' => 'queued', 'payload' => ['from' => $user->email, 'to' => ['reader@example.net'], 'subject' => 'Saved intent', 'html' => '<p>Original body.</p>', 'text' => 'Original body.', 'tags' => [['name' => 'postroom_intent', 'value' => $id]]]]);
+        $intent = SendIntent::create(['id' => $id, 'draft_id' => $draft->id, 'user_id' => $user->id, 'mailbox_id' => $box->id, 'recipients' => 1, 'status' => 'queued', 'payload' => ['from' => $user->email, 'to' => ['reader@example.net'], 'subject' => 'Saved intent', 'html' => '<p>Original body.</p>', 'text' => 'Original body.', 'tags' => [['name' => 'webmail_intent', 'value' => $id]]]]);
         DB::table('quota_ledger')->insert(['intent_id' => $id, 'recipients' => 1, 'created_at' => now()]);
         Message::create(['send_intent_id' => $id, 'mailbox_id' => $box->id, 'thread_id' => (string) Str::uuid(), 'from_email' => $user->email, 'to' => ['reader@example.net'], 'cc' => [], 'subject' => 'Saved intent', 'body_text' => 'Original body.', 'body_html' => '<p>Original body.</p>', 'raw_mime' => 'Fictional immutable MIME', 'folder' => 'sent', 'delivery_status' => 'queued', 'logical_bytes' => 1000]);
 
@@ -66,7 +66,7 @@ class DeliveryRecoveryTest extends TestCase
         $payload = $intent->payload;
         $draft->update(['body' => '<p>Later draft data must not replace the intent.</p>']);
         $provider = \Mockery::mock(OutboundMailProvider::class);
-        $provider->shouldReceive('send')->once()->with($payload, 'postroom/'.$intent->id)->andReturn(['status' => 'accepted', 'id' => 'fictional-recovered-send', 'error' => null]);
+        $provider->shouldReceive('send')->once()->with($payload, 'webmail/'.$intent->id)->andReturn(['status' => 'accepted', 'id' => 'fictional-recovered-send', 'error' => null]);
         $this->app->instance(OutboundMailProvider::class, $provider);
         $delivery = app(DeliveryService::class);
 
@@ -140,7 +140,7 @@ class DeliveryRecoveryTest extends TestCase
     public function test_resume_endpoint_keeps_quota_held_intent_queued_and_returns_an_actionable_response(): void
     {
         [$user, $draft, $intent] = $this->queued();
-        config(['postroom.daily_limit' => 1]);
+        config(['webmail.daily_limit' => 1]);
         $this->actingAs($user)->postJson('/drafts/'.$draft->id.'/resume-send')->assertUnprocessable()->assertJsonPath('status', 'queued')->assertJsonPath('resumable', true);
         $this->assertNull($intent->fresh()->attempted_at);
         $this->assertSame('queued', $draft->fresh()->status);
@@ -196,7 +196,7 @@ class DeliveryRecoveryTest extends TestCase
     public function test_resume_does_not_send_when_provider_usage_is_unavailable(): void
     {
         [$user, $draft, $intent] = $this->queued();
-        config(['postroom.provider' => 'resend']);
+        config(['webmail.provider' => 'resend']);
         $usage = \Mockery::mock(UsageService::class)->makePartial();
         $usage->shouldReceive('snapshot')->once()->andReturn(null);
         $this->app->instance(UsageService::class, $usage);

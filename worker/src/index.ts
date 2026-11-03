@@ -326,9 +326,9 @@ async function authenticate(
     env: Env,
     raw: string,
 ): Promise<boolean> {
-    const timestamp = request.headers.get('X-Postroom-Time') ?? '',
-        nonce = request.headers.get('X-Postroom-Nonce') ?? '',
-        supplied = request.headers.get('X-Postroom-Signature') ?? '';
+    const timestamp = request.headers.get('X-Webmail-Time') ?? '',
+        nonce = request.headers.get('X-Webmail-Nonce') ?? '',
+        supplied = request.headers.get('X-Webmail-Signature') ?? '';
     if (
         !env.INGRESS_SECRET ||
         env.INGRESS_SECRET.length < 32 ||
@@ -539,9 +539,9 @@ export default {
                 ),
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Postroom-Time': timestamp,
-                    'X-Postroom-Nonce': nonce,
-                    'X-Postroom-Signature': await signature(
+                    'X-Webmail-Time': timestamp,
+                    'X-Webmail-Nonce': nonce,
+                    'X-Webmail-Signature': await signature(
                         env.INGRESS_SECRET,
                         `${timestamp}\n${nonce}\nPOST\n${path}\n${body}`,
                     ),

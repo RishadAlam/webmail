@@ -84,7 +84,7 @@ class TrashDeletionTest extends TestCase
         $this->actingAs($user)->deleteJson('/mail/'.$foreign->id.'/trash', ['ids' => [$foreignMail->id], 'confirmation' => 'DELETE'])->assertForbidden();
         $this->deleteJson('/mail/'.$box->id.'/trash', ['ids' => [$ownMail->id, $foreignMail->id], 'confirmation' => 'DELETE'])->assertForbidden();
         $admin = User::factory()->withTwoFactor()->create(['role' => 'owner']);
-        $this->actingAs($admin)->withSession(['postroom.mfa_user' => $admin->id])
+        $this->actingAs($admin)->withSession(['webmail.mfa_user' => $admin->id])
             ->deleteJson('/mail/'.$box->id.'/trash', ['ids' => [$ownMail->id], 'confirmation' => 'DELETE'])->assertForbidden();
         $this->assertModelExists($ownMail);
         $this->assertModelExists($foreignMail);
@@ -190,7 +190,7 @@ class TrashDeletionTest extends TestCase
     #[DataProvider('retainedDeliveryOutcomes')]
     public function test_purging_sent_trash_keeps_storage_charged_for_the_retained_delivery_draft(string $outcome): void
     {
-        config(['postroom.provider' => 'mock', 'postroom.mock_outcome' => $outcome === 'uncertain' ? 'timeout' : $outcome]);
+        config(['webmail.provider' => 'mock', 'webmail.mock_outcome' => $outcome === 'uncertain' ? 'timeout' : $outcome]);
         [$user, $box] = $this->account();
         $draft = $this->savedDraft($user, $box);
         $draftBytes = (int) $draft->logical_bytes;

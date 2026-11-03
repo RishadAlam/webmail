@@ -21,7 +21,7 @@ class WorkerIngressGateway implements IngressGateway, RecipientDirectoryGateway
         $timestamp = (string) time();
         $nonce = (string) Str::uuid();
         $signature = hash_hmac('sha256', "$timestamp\n$nonce\nPOST\n$path\n$body", $secret);
-        $response = Http::timeout(15)->withoutRedirecting()->withHeaders(['X-Postroom-Time' => $timestamp, 'X-Postroom-Nonce' => $nonce, 'X-Postroom-Signature' => $signature])
+        $response = Http::timeout(15)->withoutRedirecting()->withHeaders(['X-Webmail-Time' => $timestamp, 'X-Webmail-Nonce' => $nonce, 'X-Webmail-Signature' => $signature])
             ->withBody($body, 'application/json')->post(rtrim($url, '/').$path);
         if (! $response->successful()) {
             throw new \RuntimeException('Ingress request failed (HTTP '.$response->status().').');

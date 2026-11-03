@@ -9,7 +9,7 @@ final class MockCloudflareControlPlane implements CloudflareControlPlane
     /** @return array<array-key, mixed> */
     public function zones(): array
     {
-        return [['id' => self::ZONE, 'name' => 'postroom.test', 'status' => 'pending']];
+        return [['id' => self::ZONE, 'name' => 'webmail.test', 'status' => 'pending']];
     }
 
     /** @return array<array-key, mixed> */
@@ -19,6 +19,6 @@ final class MockCloudflareControlPlane implements CloudflareControlPlane
             throw new \InvalidArgumentException('Unknown fictional zone.');
         }
 
-        return [['id' => 'fictional-record', 'type' => 'TXT', 'name' => 'postroom.test', 'content' => 'fictional-inspection-fixture', 'ttl' => 1]];
+        return [['id' => 'fictional-record', 'type' => 'TXT', 'name' => 'webmail.test', 'content' => 'fictional-inspection-fixture', 'ttl' => 1]];
     }
 }

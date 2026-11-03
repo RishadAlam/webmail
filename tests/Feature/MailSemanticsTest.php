@@ -217,7 +217,7 @@ class MailSemanticsTest extends TestCase
 
     public function test_reply_all_quota_hold_retains_recipients_body_and_source(): void
     {
-        config(['postroom.daily_limit' => 1]);
+        config(['webmail.daily_limit' => 1]);
         [$user, $box] = $this->account();
         $message = $this->source($box, ['to' => ['mira@example.test', 'peer@example.net']]);
         $draftId = $this->actingAs($user)->postJson('/mail/'.$box->id.'/drafts', ['reply_to' => $message->id, 'mode' => 'reply-all'])->assertCreated()->json('id');

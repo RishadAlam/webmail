@@ -17,7 +17,7 @@ class ProductionRuntimeTest extends TestCase
             'app.key' => 'base64:'.base64_encode(str_repeat('k', 32)),
             'app.cipher' => 'AES-256-CBC', 'database.default' => 'pgsql',
             'database.connections.pgsql.driver' => 'pgsql', 'database.connections.pgsql.url' => null,
-            'database.connections.pgsql.sslmode' => 'verify-full', 'postroom.domain' => 'fictional-mail.org',
+            'database.connections.pgsql.sslmode' => 'verify-full', 'webmail.domain' => 'fictional-mail.org',
             'database.connections.pgsql_unverified' => ['driver' => 'pgsql', 'sslmode' => 'require'],
             'session.driver' => 'database', 'session.connection' => null,
             'session.encrypt' => true, 'session.secure' => true,
@@ -30,23 +30,22 @@ class ProductionRuntimeTest extends TestCase
     {
         return [
             'debug' => ['app.debug', true],
-            'sqlite' => ['database.default', 'sqlite'],
-            'sqlite URL override' => ['database.connections.pgsql.url', 'sqlite:///tmp/mail.sqlite'],
-            'URL query driver override' => ['database.connections.pgsql.url', 'postgresql://localhost/mail?driver=sqlite'],
+            'MySQL URL override' => ['database.connections.pgsql.url', 'mysql://localhost/mail'],
+            'URL query driver override' => ['database.connections.pgsql.url', 'postgresql://localhost/mail?driver=mysql'],
             'plaintext database' => ['database.connections.pgsql.sslmode', 'disable'],
             'unverified database certificate' => ['database.connections.pgsql.sslmode', 'require'],
             'URL TLS downgrade' => ['database.connections.pgsql.url', 'postgresql://localhost/mail?sslmode=disable'],
-            'missing receiving domain' => ['postroom.domain', ''],
-            'local fallback domain' => ['postroom.domain', 'postroom.test'],
-            'local domain' => ['postroom.domain', 'mail.local'],
-            'local hostname' => ['postroom.domain', 'localhost'],
-            'example domain' => ['postroom.domain', 'mail.example.com'],
-            'invalid domain' => ['postroom.domain', 'mail.invalid'],
-            'special use domain' => ['postroom.domain', 'mail.onion'],
-            'internal domain' => ['postroom.domain', 'mail.internal'],
-            'IP receiving domain' => ['postroom.domain', '192.0.2.1'],
+            'missing receiving domain' => ['webmail.domain', ''],
+            'local fallback domain' => ['webmail.domain', 'webmail.test'],
+            'local domain' => ['webmail.domain', 'mail.local'],
+            'local hostname' => ['webmail.domain', 'localhost'],
+            'example domain' => ['webmail.domain', 'mail.example.com'],
+            'invalid domain' => ['webmail.domain', 'mail.invalid'],
+            'special use domain' => ['webmail.domain', 'mail.onion'],
+            'internal domain' => ['webmail.domain', 'mail.internal'],
+            'IP receiving domain' => ['webmail.domain', '192.0.2.1'],
             'file sessions' => ['session.driver', 'file'],
-            'sqlite session connection' => ['session.connection', 'sqlite'],
+            'MySQL session connection' => ['session.connection', 'mysql'],
             'unverified session connection' => ['session.connection', 'pgsql_unverified'],
             'unencrypted sessions' => ['session.encrypt', false],
             'insecure cookies' => ['session.secure', false],
@@ -76,7 +75,7 @@ class ProductionRuntimeTest extends TestCase
     public function test_safe_production_boot_needs_no_provider_credentials_or_database_connection(): void
     {
         $this->safeConfiguration();
-        config(['database.connections.pgsql.host' => 'unreachable.invalid', 'postroom.resend_sending_key' => null]);
+        config(['database.connections.pgsql.host' => 'unreachable.invalid', 'webmail.resend_sending_key' => null]);
         $this->app->detectEnvironment(fn () => 'production');
         (new AppServiceProvider($this->app))->boot();
         $this->assertSame('https://mail.example.test/login', url('/login'));

@@ -45,7 +45,7 @@ return new class extends Migration
             $t->string('from_email');
             $t->json('to');
             $t->json('cc');
-            $t->text('subject')->default('');
+            $t->text('subject')->nullable();
             $t->text('body_text');
             $t->text('body_html')->nullable();
             $t->text('raw_mime');
@@ -70,7 +70,7 @@ return new class extends Migration
             $t->json('to');
             $t->json('cc');
             $t->json('bcc');
-            $t->text('subject')->default('');
+            $t->text('subject')->nullable();
             $t->text('body');
             $t->unsignedInteger('version')->default(1);
             $t->string('thread_id')->nullable();

@@ -43,7 +43,7 @@ class FortifyServiceProvider extends ServiceProvider
             ValidTwoFactorAuthenticationCodeProvided::class,
             TwoFactorAuthenticationConfirmed::class,
         ], function ($event) {
-            request()->session()->put('postroom.mfa_user', $event->user->getAuthIdentifier());
+            request()->session()->put('webmail.mfa_user', $event->user->getAuthIdentifier());
         });
         $this->configureActions();
         $this->configureViews();

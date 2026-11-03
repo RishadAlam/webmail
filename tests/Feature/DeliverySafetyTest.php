@@ -34,7 +34,7 @@ class DeliverySafetyTest extends TestCase
 
     private function event(SendIntent $intent, string $type, array $recipients, string $bounce = 'Permanent'): void
     {
-        $raw = json_encode(['type' => $type, 'data' => ['email_id' => $intent->provider_id ?? 'provider-during-request', 'to' => $recipients, 'message_id' => '<real-wire-id@example.net>', 'tags' => ['postroom_intent' => $intent->id], 'bounce' => ['type' => $bounce]]], JSON_THROW_ON_ERROR);
+        $raw = json_encode(['type' => $type, 'data' => ['email_id' => $intent->provider_id ?? 'provider-during-request', 'to' => $recipients, 'message_id' => '<real-wire-id@example.net>', 'tags' => ['webmail_intent' => $intent->id], 'bounce' => ['type' => $bounce]]], JSON_THROW_ON_ERROR);
         app(EventService::class)->import(['id' => fake()->uuid(), 'raw' => base64_encode($raw), 'checksum' => hash('sha256', $raw)]);
     }
 
@@ -43,7 +43,7 @@ class DeliverySafetyTest extends TestCase
         $draft = $this->draft();
         $intent = SendIntent::create(['draft_id' => $draft->id, 'user_id' => $draft->user_id, 'mailbox_id' => $draft->mailbox_id, 'payload' => [], 'recipients' => 10, 'status' => 'uncertain', 'created_at' => now()->subHour(), 'updated_at' => now()->subHour()]);
         DB::table('quota_ledger')->insert(['intent_id' => $intent->id, 'recipients' => 10, 'created_at' => now()->subHour()]);
-        config(['postroom.provider' => 'resend']);
+        config(['webmail.provider' => 'resend']);
         $snapshot = (object) ['observed_at' => now()->subSeconds(20), 'last_error' => null, 'data' => json_encode(['daily' => ['used' => 90, 'limit' => 100], 'monthly' => ['used' => 90, 'limit' => 3000]])];
         $this->assertFalse(app(UsageService::class)->allowance(1, $snapshot));
         $intent->update(['status' => 'accepted']);
@@ -82,7 +82,7 @@ class DeliverySafetyTest extends TestCase
     public function test_definite_failure_can_be_copied_but_uncertainty_cannot(): void
     {
         $draft = $this->draft();
-        config(['postroom.mock_outcome' => 'failed']);
+        config(['webmail.mock_outcome' => 'failed']);
         $this->postJson('/drafts/'.$draft->id.'/send', ['version' => 1])->assertOk()->assertJsonPath('status', 'failed');
         $copy = $this->postJson('/mail/'.$draft->mailbox_id.'/drafts', ['copy_failed' => $draft->id])->assertCreated()->json('id');
         $this->assertNotSame($draft->id, $copy);
@@ -125,7 +125,7 @@ class DeliverySafetyTest extends TestCase
         $owner = User::factory()->withTwoFactor()->create();
         $owner->forceFill(['role' => 'owner'])->save();
         $this->actingAs($owner)->get('/admin')->assertForbidden();
-        $this->withSession(['postroom.mfa_user' => $owner->id + 1])->get('/admin')->assertForbidden();
+        $this->withSession(['webmail.mfa_user' => $owner->id + 1])->get('/admin')->assertForbidden();
     }
 
     public function test_physical_storage_guard_preserves_draft_and_does_not_dispatch(): void

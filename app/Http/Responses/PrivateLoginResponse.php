@@ -25,7 +25,7 @@ final class PrivateLoginResponse implements LoginResponse, TwoFactorLoginRespons
             }
         } elseif (in_array($path, ['/settings/profile', '/settings/security', '/settings/appearance'], true)) {
             $target = $path;
-        } elseif ($path === '/admin' && in_array($request->user()->role, ['owner', 'admin'], true) && $request->session()->get('postroom.mfa_user') === $request->user()->id) {
+        } elseif ($path === '/admin' && in_array($request->user()->role, ['owner', 'admin'], true) && $request->session()->get('webmail.mfa_user') === $request->user()->id) {
             $target = '/admin';
         }
 

@@ -53,7 +53,7 @@ class ProviderConnectionController extends Controller
     {
         $user = User::findOrFail($request->user()->id);
         abort_unless($user->active && $user->role === 'owner' && $user->two_factor_confirmed_at
-            && $request->session()->get('postroom.mfa_user') === $user->id, 403, 'Provider connections require the active owner and two-factor verification in this session.');
+            && $request->session()->get('webmail.mfa_user') === $user->id, 403, 'Provider connections require the active owner and two-factor verification in this session.');
 
         return $user;
     }

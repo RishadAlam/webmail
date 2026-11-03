@@ -13,7 +13,7 @@ class ResendProvider implements OutboundMailProvider, UsageProvider
     public function send(array $payload, string $idempotencyKey): array
     {
         $key = app(ConnectionConfiguration::class)->value('resend_key');
-        if (! config('postroom.sending_enabled') || ! $key) {
+        if (! config('webmail.sending_enabled') || ! $key) {
             return ['status' => 'failed', 'id' => null, 'error' => 'External sending is disabled. Ask the owner to complete provider verification.'];
         }
         try {

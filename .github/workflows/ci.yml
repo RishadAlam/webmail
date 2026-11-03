@@ -20,20 +20,32 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
-      POSTROOM_PROVIDER: mock
+      WEBMAIL_PROVIDER: mock
       EXTERNAL_SENDING_ENABLED: 'false'
       WRANGLER_SEND_METRICS: 'false'
     services:
       postgres:
         image: postgres:17@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
         env:
-          POSTGRES_DB: postroom_test
-          POSTGRES_USER: postroom
+          POSTGRES_DB: webmail_test
+          POSTGRES_USER: webmail
           POSTGRES_PASSWORD: local-development-only
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postroom -d postroom_test"
+          --health-cmd "pg_isready -U webmail -d webmail_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: webmail_test
+          MYSQL_ROOT_PASSWORD: local-development-only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -plocal-development-only"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -55,7 +67,7 @@ jobs:
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.4'
-          extensions: mbstring, dom, xml, xmlwriter, pdo_sqlite, pdo_pgsql, zip
+          extensions: mbstring, dom, xml, xmlwriter, pdo_mysql, pdo_pgsql, zip
           tools: composer:v2
           coverage: none
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -76,7 +88,16 @@ jobs:
           npm run check
           npm run types:check
           npm run types:worker
-      - name: PHP tests with SQLite
+      - name: PHP tests with MySQL
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_DATABASE: webmail_test
+          DB_USERNAME: root
+          DB_PASSWORD: local-development-only
+          DB_URL: ''
         run: php artisan test --compact
       - name: PHP tests with PostgreSQL
         env:
@@ -84,8 +105,8 @@ jobs:
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
           DB_PORT: '5432'
-          DB_DATABASE: postroom_test
-          DB_USERNAME: postroom
+          DB_DATABASE: webmail_test
+          DB_USERNAME: webmail
           DB_PASSWORD: local-development-only
           DB_URL: ''
         run: php artisan test --compact
@@ -103,9 +124,9 @@ jobs:
         run: npm run test:e2e -- --reporter=line
       - name: Firefox acceptance checks
         env:
-          POSTROOM_BROWSER: firefox
+          WEBMAIL_BROWSER: firefox
         run: npm run test:e2e -- --reporter=line
       - name: WebKit acceptance checks
         env:
-          POSTROOM_BROWSER: webkit
+          WEBMAIL_BROWSER: webkit
         run: npm run test:e2e -- --reporter=line

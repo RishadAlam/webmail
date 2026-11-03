@@ -7,10 +7,10 @@ test.use({ storageState: { cookies: [], origins: [] } });
 
 async function login(
     page: import('@playwright/test').Page,
-    email = 'mira@postroom.test',
+    email = 'mira@webmail.test',
 ) {
     const savedSession = 'storage/review-auth.json';
-    if (email === 'mira@postroom.test' && existsSync(savedSession)) {
+    if (email === 'mira@webmail.test' && existsSync(savedSession)) {
         const state = JSON.parse(readFileSync(savedSession, 'utf8')) as {
             cookies: import('@playwright/test').Cookie[];
         };
@@ -23,12 +23,12 @@ async function login(
     await page.getByLabel('Email address', { exact: true }).fill(email);
     await page
         .getByLabel('Password', { exact: true })
-        .fill('postroom-local-only');
+        .fill('webmail-local-only');
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL(
         email.startsWith('owner') ? /two-factor-challenge/ : /\/mail/,
     );
-    if (email === 'mira@postroom.test')
+    if (email === 'mira@webmail.test')
         await page.context().storageState({ path: savedSession });
 }
 
@@ -98,7 +98,7 @@ test('review: draft and search survive account security confirmation and return'
         .click();
     await page
         .getByLabel('Password', { exact: true })
-        .fill('postroom-local-only');
+        .fill('webmail-local-only');
     await page
         .getByRole('button', { name: 'Confirm password', exact: true })
         .click();
@@ -118,7 +118,7 @@ test('review: branded MFA fields are labeled and recovery is reachable', async (
     page,
 }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await login(page, 'owner@postroom.test');
+    await login(page, 'owner@webmail.test');
     await expect(page).toHaveURL(/two-factor-challenge/);
     await expect(
         page.getByLabel('WebMail by Hookstack', { exact: true }),
@@ -359,7 +359,7 @@ test('review: owner manages aliases, quotas, directory and masked connections on
 }) => {
     test.setTimeout(90000);
     await page.setViewportSize({ width: 390, height: 844 });
-    await login(page, 'owner@postroom.test');
+    await login(page, 'owner@webmail.test');
     await page.getByLabel('Six-digit code').fill(await fixtureTotp());
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(page).toHaveURL(/\/mail/);
@@ -385,19 +385,19 @@ test('review: owner manages aliases, quotas, directory and masked connections on
     await page.getByRole('button', { name: 'Add alias', exact: true }).click();
     await expect(
         page.getByRole('checkbox', {
-            name: 'studio-review@postroom.test',
+            name: 'studio-review@webmail.test',
             exact: true,
         }),
     ).toBeChecked();
     await page
         .getByRole('checkbox', {
-            name: 'studio-review@postroom.test',
+            name: 'studio-review@webmail.test',
             exact: true,
         })
         .click(); // This controlled checkbox changes only after the server confirms.
     await expect(
         page.getByRole('checkbox', {
-            name: 'studio-review@postroom.test',
+            name: 'studio-review@webmail.test',
             exact: true,
         }),
     ).not.toBeChecked();
@@ -429,7 +429,7 @@ test('review: owner manages aliases, quotas, directory and masked connections on
     if (page.url().includes('confirm-password')) {
         await page
             .getByLabel('Password', { exact: true })
-            .fill('postroom-local-only');
+            .fill('webmail-local-only');
         await page
             .getByRole('button', { name: 'Confirm password', exact: true })
             .click();

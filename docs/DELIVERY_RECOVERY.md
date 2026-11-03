@@ -45,7 +45,7 @@ For an existing D1 database, review and apply `worker/migrations/0002_acknowledg
 
 ## Local evidence and remaining hosted checks
 
-The PHP regressions use in-memory SQLite, fictional drafts, the simulator, and provider doubles. They exercise explicit recovery, privacy and current authorization, immutable payloads, suppression, quota aging, unavailable usage, one Sent copy/reservation, and refusal to retry attempted outcomes. They are not live Resend tests or a PostgreSQL concurrency certification.
+The PHP regressions use disposable MySQL and PostgreSQL databases, fictional drafts, the simulator, and provider doubles. They exercise explicit recovery, privacy and current authorization, immutable payloads, suppression, quota aging, unavailable usage, one Sent copy/reservation, and refusal to retry attempted outcomes. They are not live Resend tests or a PostgreSQL concurrency certification.
 
 Worker tests use Miniflare D1 and fictional MIME/events. They cover retained acknowledgement/accounting, pressure and expiry behavior, bounded cleanup, signed replay, exact bytes and recovery state across local runtime restart, and bounded backoff. Virtual timers simulate a 65-second successful response and a stalled request cancelled at the configured upper bound; these tests do not wait minutes or contact Render. Node 22 emits its experimental MockTimers warning during those two tests.
 

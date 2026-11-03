@@ -42,17 +42,17 @@ class ProviderTest extends TestCase
 
     public function test_resend_uses_documented_endpoint_and_stable_key_and_keeps_acceptance_separate(): void
     {
-        config(['postroom.resend_key' => 'test-only', 'postroom.sending_enabled' => true]);
+        config(['webmail.resend_key' => 'test-only', 'webmail.sending_enabled' => true]);
         Http::fake(['api.resend.com/emails' => Http::response(['id' => 'provider-1'], 200)]);
-        $result = app(ResendProvider::class)->send(['from' => 'mira@postroom.test', 'to' => ['a@example.net'], 'text' => 'Hello', 'subject' => 'Fiction'], 'postroom/one');
+        $result = app(ResendProvider::class)->send(['from' => 'mira@webmail.test', 'to' => ['a@example.net'], 'text' => 'Hello', 'subject' => 'Fiction'], 'webmail/one');
         $this->assertSame('accepted', $result['status']);
         $this->assertSame('provider-1', $result['id']);
-        Http::assertSent(fn ($r) => $r->url() === 'https://api.resend.com/emails' && $r->hasHeader('Idempotency-Key', 'postroom/one'));
+        Http::assertSent(fn ($r) => $r->url() === 'https://api.resend.com/emails' && $r->hasHeader('Idempotency-Key', 'webmail/one'));
     }
 
     public function test_failed_usage_refresh_keeps_previous_measurement_stale_and_blocks_admission(): void
     {
-        config(['postroom.provider' => 'resend', 'postroom.resend_management_key' => 'test-only']);
+        config(['webmail.provider' => 'resend', 'webmail.resend_management_key' => 'test-only']);
         DB::table('usage_snapshots')->insert(['provider' => 'resend', 'data' => json_encode(['daily' => ['used' => 78, 'limit' => 100], 'monthly' => ['used' => 400, 'limit' => 3000]]), 'observed_at' => now()->subHour()]);
         Http::fake(['api.resend.com/usage' => Http::response([], 503)]);
         $usage = app(UsageService::class);
@@ -85,8 +85,8 @@ class ProviderTest extends TestCase
         $this->withoutVite();
         $admin = User::factory()->withTwoFactor()->create();
         $admin->forceFill(['role' => 'owner'])->save();
-        $this->actingAs($admin)->withSession(['postroom.mfa_user' => $admin->id])->postJson('/admin/people', ['name' => 'Fictional Sam', 'address' => 'sam', 'password' => 'a-local-only-password'])->assertCreated();
-        $member = User::where('email', 'sam@postroom.test')->firstOrFail();
+        $this->actingAs($admin)->withSession(['webmail.mfa_user' => $admin->id])->postJson('/admin/people', ['name' => 'Fictional Sam', 'address' => 'sam', 'password' => 'a-local-only-password'])->assertCreated();
+        $member = User::where('email', 'sam@webmail.test')->firstOrFail();
         $this->assertDatabaseHas('addresses', ['email' => $member->email, 'directory_status' => 'pending']);
         $this->patchJson('/admin/people/'.$member->id, ['active' => false])->assertOk();
         $this->assertFalse($member->fresh()->active);

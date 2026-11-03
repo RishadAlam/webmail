@@ -42,21 +42,21 @@
             "result": "passed"
         },
         {
-            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; POSTROOM_BROWSER=chromium npm run test:e2e -- tests/e2e/login.spec.ts tests/e2e/mail.spec.ts tests/e2e/workflows.spec.ts --grep \"login is accessible|failed autosave|themes: gallery persists|server outage\"'",
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; WEBMAIL_BROWSER=chromium npm run test:e2e -- tests/e2e/login.spec.ts tests/e2e/mail.spec.ts tests/e2e/workflows.spec.ts --grep \"login is accessible|failed autosave|themes: gallery persists|server outage\"'",
             "result": "passed",
             "tests": 4,
             "seconds": 8.4,
             "browser": "chromium"
         },
         {
-            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; POSTROOM_BROWSER=webkit npm run test:e2e -- tests/e2e/login.spec.ts tests/e2e/mail.spec.ts tests/e2e/workflows.spec.ts --grep \"login is accessible|failed autosave|themes: gallery persists|server outage\"'",
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; WEBMAIL_BROWSER=webkit npm run test:e2e -- tests/e2e/login.spec.ts tests/e2e/mail.spec.ts tests/e2e/workflows.spec.ts --grep \"login is accessible|failed autosave|themes: gallery persists|server outage\"'",
             "result": "passed",
             "tests": 4,
             "seconds": 10.4,
             "browser": "webkit"
         },
         {
-            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; MOZ_APP_DATA=/Users/rishadalam/Sites/webmail/storage/app/firefox-test-data/app-data MOZ_LOCAL_APP_DATA=/Users/rishadalam/Sites/webmail/storage/app/firefox-test-data/local-data POSTROOM_BROWSER=firefox npm run test:e2e -- tests/e2e/login.spec.ts tests/e2e/mail.spec.ts tests/e2e/workflows.spec.ts --grep \"login is accessible|failed autosave|themes: gallery persists|server outage\"'",
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; MOZ_APP_DATA=/Users/rishadalam/Sites/webmail/storage/app/firefox-test-data/app-data MOZ_LOCAL_APP_DATA=/Users/rishadalam/Sites/webmail/storage/app/firefox-test-data/local-data WEBMAIL_BROWSER=firefox npm run test:e2e -- tests/e2e/login.spec.ts tests/e2e/mail.spec.ts tests/e2e/workflows.spec.ts --grep \"login is accessible|failed autosave|themes: gallery persists|server outage\"'",
             "result": "passed",
             "tests": 4,
             "seconds": 10.7,
@@ -114,11 +114,11 @@
         "public/sw.js": "92aec024c96d4aee6cea8731565591a3e32916e93570c92eb8482f773d406002",
         "resources/brand/webmail-identity-reference.png": "e6d29084ca01c3bc03c3bae6025eb253a79b78201edd5997eb26f8d18ce2ca29",
         "resources/brand/webmail-mark-master.png": "bb340c68d0d42b9f9c145ed34d474fa580cbc35255bfe55b091901a0f4a05247",
-        "resources/css/postroom.css": "91d0548bd6002968ed27cd871fd1c4721689923382a3a12f08c0e84b902ca9c9",
+        "resources/css/webmail.css": "91d0548bd6002968ed27cd871fd1c4721689923382a3a12f08c0e84b902ca9c9",
         "resources/css/themes.css": "cd609c0eeddf17151795ad3262568f02c2b20985436ac86ee40094ce75904a83",
         "resources/js/components/app-header.tsx": "efb440af228452db0aa5d4b453cac67dd587dedbf0c1292e5769a03f3839e0d7",
         "resources/js/components/app-logo-icon.tsx": "d02e10f659f2c7d30bc1830976bf4c1ae18530077f1f6ddd122a055cf645041b",
-        "resources/js/components/postroom/ui.tsx": "b4db17333b7cfdf4b90d664e20e7e7e57364fd36832eead22e70ee7ff4c2f6ea",
+        "resources/js/components/webmail/ui.tsx": "b4db17333b7cfdf4b90d664e20e7e7e57364fd36832eead22e70ee7ff4c2f6ea",
         "resources/js/layouts/auth/auth-card-layout.tsx": "e71f2b34642934edcde033644ca21d7d074bd730e77d7f07c301ea0b140d3ca3",
         "resources/js/layouts/auth/auth-split-layout.tsx": "5a763125eb927deb05f8a0a79446867a0aff33b0ade69b8afc77d71a2b9c3344",
         "resources/js/pages/mail.tsx": "b2b0355fc153dd2a1e82cb4f08f46cf2a79b9784353738e2b4f0e52c730964ac",

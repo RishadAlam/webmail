@@ -21,7 +21,7 @@ class ConnectionConfiguration
         $settings = $this->record()->settings ?? [];
         // A stored null is an explicit clear, not permission to revive an old
         // environment credential. Missing tables still permit first bootstrap.
-        $value = array_key_exists($field, $settings) ? $settings[$field] : config('postroom.'.$field);
+        $value = array_key_exists($field, $settings) ? $settings[$field] : config('webmail.'.$field);
 
         return is_string($value) && $value !== '' ? $value : null;
     }
@@ -53,7 +53,7 @@ class ConnectionConfiguration
         if (str_ends_with($host, '.workers.dev')) {
             return true;
         }
-        $bootstrap = config('postroom.worker_url');
+        $bootstrap = config('webmail.worker_url');
 
         return is_string($bootstrap) && rtrim($url, '/') === rtrim($bootstrap, '/');
     }
@@ -91,7 +91,7 @@ class ConnectionConfiguration
             $settings = $record->settings ?? [];
             $checks = $record->checks ?? [];
             foreach ($changes as $field => $value) {
-                if (($settings[$field] ?? config('postroom.'.$field)) !== $value) {
+                if (($settings[$field] ?? config('webmail.'.$field)) !== $value) {
                     $check = match ($field) {
                         'resend_management_key' => 'resend_management',
                         'cloudflare_token' => 'cloudflare',
@@ -126,13 +126,13 @@ class ConnectionConfiguration
         $checks = [];
         foreach (['resend_management' => 'resend_management_key', 'cloudflare' => 'cloudflare_token'] as $name => $field) {
             $credential = $this->value($field);
-            $status = config('postroom.provider') === 'mock' ? 'mock' : ($credential === null ? 'not_configured' : 'unchecked');
+            $status = config('webmail.provider') === 'mock' ? 'mock' : ($credential === null ? 'not_configured' : 'unchecked');
             $current = $credential !== null && ($saved['_checked_'.$name] ?? null) === $this->checkFingerprint($name, $credential);
             $checks[$name] = $status === 'unchecked' && $current ? ($record?->checks[$name] ?? ['status' => $status, 'checked_at' => null, 'error' => null]) : ['status' => $status, 'checked_at' => null, 'error' => null];
         }
 
-        return ['mode' => config('postroom.provider') === 'mock' ? 'mock' : 'live', 'domain' => config('postroom.domain'),
-            'sending_enabled' => (bool) config('postroom.sending_enabled'), 'fields' => $fields, 'checks' => $checks];
+        return ['mode' => config('webmail.provider') === 'mock' ? 'mock' : 'live', 'domain' => config('webmail.domain'),
+            'sending_enabled' => (bool) config('webmail.sending_enabled'), 'fields' => $fields, 'checks' => $checks];
     }
 
     /** @return array{status: string, error: string|null} */
@@ -143,7 +143,7 @@ class ConnectionConfiguration
             'cloudflare' => 'cloudflare_token',
             default => throw ValidationException::withMessages(['connection' => 'Only Resend management access and Cloudflare read access have a supported read-only check. Sending keys and Worker delivery are not verified here.']),
         };
-        if (config('postroom.provider') === 'mock') {
+        if (config('webmail.provider') === 'mock') {
             return ['status' => 'mock', 'error' => null];
         }
         $credential = $this->value($field);
@@ -156,7 +156,7 @@ class ConnectionConfiguration
                 app(ResendProvider::class)->usage($credential);
             } else {
                 $client = new CloudflareClient($credential);
-                $domain = strtolower((string) config('postroom.domain'));
+                $domain = strtolower((string) config('webmail.domain'));
                 $zone = collect($client->zones())->first(fn ($zone) => is_array($zone) && strtolower($zone['name'] ?? '') === $domain);
                 if (! is_array($zone) || ! is_string($zone['id'] ?? null)) {
                     throw new \RuntimeException('Configured domain zone not accessible.');
@@ -191,7 +191,7 @@ class ConnectionConfiguration
     {
         // Keep this binding encrypted with the settings. An environment key or
         // configured-domain change must not inherit another connection's check.
-        return hash_hmac('sha256', json_encode([$connection, $credential, $connection === 'cloudflare' ? config('postroom.domain') : null], JSON_THROW_ON_ERROR), (string) config('app.key'));
+        return hash_hmac('sha256', json_encode([$connection, $credential, $connection === 'cloudflare' ? config('webmail.domain') : null], JSON_THROW_ON_ERROR), (string) config('app.key'));
     }
 
     private function record(): ?ProviderConnection

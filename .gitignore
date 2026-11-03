@@ -50,12 +50,10 @@ yarn-error.log
 /opencode.json
 /opencode.jsonc
 
-/database/*.sqlite*
 /test-results/
 /playwright-report/
 /worker/.wrangler/
 
-/storage/e2e.sqlite*
 /storage/test-auth.json
 /storage/review-auth.json
 /storage/e2e-totp-step

@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
-import { Brand } from '@/components/postroom/ui';
+import { Brand } from '@/components/webmail/ui';
 import type { BreadcrumbItem } from '@/types';
 import { useMailNavigation } from '@/lib/mail-navigation';
 export default function AppLayout({

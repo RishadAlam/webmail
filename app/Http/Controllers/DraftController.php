@@ -76,7 +76,7 @@ class DraftController extends Controller
             abort_if(Draft::where('mailbox_id', $box->id)->whereIn('status', ['draft', 'held'])->count() >= 100, 422, 'This mailbox has 100 editable drafts. Remove unused drafts before creating another.');
             $copies = $copyAttachmentsFrom !== null ? DraftAttachment::where('draft_id', $copyAttachmentsFrom)->get() : collect();
             $bytes = 1024 + strlen(json_encode($fields, JSON_THROW_ON_ERROR)) + $copies->sum('logical_bytes');
-            abort_if(! app(StorageBudget::class)->permits($bytes) || $box->used_bytes + $bytes > $box->quota_bytes || Mailbox::sum('used_bytes') + $bytes > config('postroom.organization_bytes'), 422, 'Mailbox storage is full. Remove unused drafts before creating another.');
+            abort_if(! app(StorageBudget::class)->permits($bytes) || $box->used_bytes + $bytes > $box->quota_bytes || Mailbox::sum('used_bytes') + $bytes > config('webmail.organization_bytes'), 422, 'Mailbox storage is full. Remove unused drafts before creating another.');
             $box->increment('used_bytes', $bytes);
             $draft = Draft::create([...$fields, 'logical_bytes' => $bytes]);
             foreach ($copies as $file) {
@@ -111,7 +111,7 @@ class DraftController extends Controller
             }
             $bytes = 1024 + strlen($data['body']) + strlen(json_encode($data, JSON_THROW_ON_ERROR)) + $attachmentBytes;
             $box = Mailbox::whereKey($draft->mailbox_id)->lockForUpdate()->firstOrFail();
-            abort_if(! app(StorageBudget::class)->permits($bytes) || $box->used_bytes + $bytes - $current->logical_bytes > $box->quota_bytes || Mailbox::sum('used_bytes') + $bytes - $current->logical_bytes > config('postroom.organization_bytes'), 422, 'Mailbox storage is full. Keep this editor open and ask an administrator for help.');
+            abort_if(! app(StorageBudget::class)->permits($bytes) || $box->used_bytes + $bytes - $current->logical_bytes > $box->quota_bytes || Mailbox::sum('used_bytes') + $bytes - $current->logical_bytes > config('webmail.organization_bytes'), 422, 'Mailbox storage is full. Keep this editor open and ask an administrator for help.');
             $box->increment('used_bytes', $bytes - $current->logical_bytes);
             $current->update([...$data, 'version' => $current->version + 1, 'logical_bytes' => $bytes, 'status' => 'draft']);
 
@@ -170,6 +170,6 @@ class DraftController extends Controller
             'body' => 'present|string|max:262144',
         ], ['recipients.max' => 'This pilot supports at most 20 recipients across To, Cc and Bcc. No recipients were removed; choose a smaller audience.',
             'body.max' => 'The quoted message is too large for an editable draft. Start a new message with a shorter excerpt; the original is retained.'])->validate();
-        abort_if(strlen($fields['body']) > config('postroom.max_mime_bytes'), 422, 'The draft text exceeds the 256 KiB editing limit. Shorten it; the original message and any saved draft are retained.');
+        abort_if(strlen($fields['body']) > config('webmail.max_mime_bytes'), 422, 'The draft text exceeds the 256 KiB editing limit. Shorten it; the original message and any saved draft are retained.');
     }
 }

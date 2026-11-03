@@ -47,7 +47,7 @@ php artisan serve --no-reload --host=127.0.0.1 --port=8000
 
 Generate the encryption key only when `.env` has an empty `APP_KEY` and no existing encrypted application data. The demo seeder is for a new local mock installation only. Use the locked dependencies; do not substitute paid editor extensions.
 
-Sign in as `mira@postroom.test` with password `postroom-local-only`. These are public fictional demo credentials, never production credentials. The local environment must keep `POSTROOM_PROVIDER=mock` and `EXTERNAL_SENDING_ENABLED=false`. A simulated accepted send is not real delivery.
+Sign in as `mira@webmail.test` with password `webmail-local-only`. These are public fictional demo credentials, never production credentials. The local environment must keep `WEBMAIL_PROVIDER=mock` and `EXTERNAL_SENDING_ENABLED=false`. A simulated accepted send is not real delivery.
 
 After changing frontend source, run `npm run build`. On this Mac, `source storage/app/local-env.sh` selects the locally installed Node toolchain if your default Node is incompatible. That ignored helper is specific to this computer. For local PostgreSQL, follow the Docker instructions in the repository README; SQLite is a development convenience only.
 
@@ -74,7 +74,7 @@ You need an owned domain with a Cloudflare-managed zone, owner-controlled provid
 | `SESSION_SAME_SITE`, `SESSION_DOMAIN`        | `lax` or `strict`; leave domain unset for host-only cookies                        |
 | `CACHE_STORE`, `QUEUE_CONNECTION`            | Both `database`; the blueprint does not start a queue daemon                       |
 | `LOG_CHANNEL`, `LOG_LEVEL`                   | `stderr`, `warning`                                                                |
-| `POSTROOM_PROVIDER`, `MAIL_MAILER`           | `resend`, `array`                                                                  |
+| `WEBMAIL_PROVIDER`, `MAIL_MAILER`           | `resend`, `array`                                                                  |
 | `EXTERNAL_SENDING_ENABLED`                   | `false` until controlled live testing is ready; `true` allows real send requests   |
 | `INGRESS_WORKER_URL`                         | Exact HTTPS Worker origin; required at bootstrap to allow a custom Worker hostname |
 | `TRUSTED_PROXIES`                            | Only verified ingress IPs/CIDRs if needed; never `*`                               |
@@ -89,13 +89,13 @@ The repository supplies `worker/src/index.ts`, `worker/wrangler.jsonc` and `work
 
 ```sh
 ./node_modules/.bin/wrangler login
-./node_modules/.bin/wrangler d1 create postroom-ingress --config worker/wrangler.jsonc
+./node_modules/.bin/wrangler d1 create webmail-ingress --config worker/wrangler.jsonc
 ```
 
 2. Replace `database_id` in `worker/wrangler.jsonc` with the returned UUID. Keep the binding named `DB`. Replace its `APP_URL` with the canonical application HTTPS origin and `MAIL_DOMAIN` with the same domain as Laravel. Initialize **only a new empty database**:
 
 ```sh
-./node_modules/.bin/wrangler d1 execute postroom-ingress --remote --file worker/schema.sql --config worker/wrangler.jsonc
+./node_modules/.bin/wrangler d1 execute webmail-ingress --remote --file worker/schema.sql --config worker/wrangler.jsonc
 ```
 
 Do not rerun the schema against an existing spool. Fresh schemas already contain retention columns; existing pre-retention databases use the reviewed one-time `worker/migrations/0002_acknowledged_payload_retention.sql` migration after backup, not both. Preserve accepted, unimported messages. [D1 commands](https://developers.cloudflare.com/d1/wrangler-commands/)

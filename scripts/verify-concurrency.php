@@ -17,10 +17,10 @@ use Symfony\Component\Process\Process;
 require dirname(__DIR__).'/vendor/autoload.php';
 $app = require dirname(__DIR__).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
-if (! app()->environment('testing') || config('database.default') !== 'pgsql' || config('database.connections.pgsql.database') !== 'postroom_concurrency') {
-    throw new RuntimeException('Use only APP_ENV=testing and PostgreSQL database postroom_concurrency.');
+if (! app()->environment('testing') || config('database.default') !== 'pgsql' || config('database.connections.pgsql.database') !== 'webmail_concurrency') {
+    throw new RuntimeException('Use only APP_ENV=testing and PostgreSQL database webmail_concurrency.');
 }
-config(['postroom.provider' => 'mock', 'postroom.daily_limit' => 2]);
+config(['webmail.provider' => 'mock', 'webmail.daily_limit' => 2]);
 if (($argv[1] ?? '') === '--child') {
     while (microtime(true) < (float) $argv[4]) {
         usleep(1000);

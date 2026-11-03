@@ -23,8 +23,8 @@ class EventService
                 return;
             }
             $intent = SendIntent::where('provider_id', $event['data']['email_id'])->lockForUpdate()->first();
-            if (! $intent && is_string($event['data']['tags']['postroom_intent'] ?? null)) {
-                $intent = SendIntent::whereKey($event['data']['tags']['postroom_intent'])->whereNull('provider_id')->whereIn('status', ['dispatching', 'uncertain'])->lockForUpdate()->first();
+            if (! $intent && is_string($event['data']['tags']['webmail_intent'] ?? null)) {
+                $intent = SendIntent::whereKey($event['data']['tags']['webmail_intent'])->whereNull('provider_id')->whereIn('status', ['dispatching', 'uncertain'])->lockForUpdate()->first();
                 if ($intent) {
                     $intent->update(['provider_id' => $event['data']['email_id']]);
                 }

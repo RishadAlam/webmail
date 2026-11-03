@@ -29,7 +29,7 @@ class ImportIncidentTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
-        config(['postroom.provider' => 'mock']);
+        config(['webmail.provider' => 'mock']);
         $this->box = Mailbox::create(['name' => 'Fictional studio', 'email' => 'studio@example.test']);
         Address::create(['mailbox_id' => $this->box->id, 'email' => $this->box->email]);
         $this->gateway = new FakeIngressGateway;
@@ -223,7 +223,7 @@ class ImportIncidentTest extends TestCase
             $this->actingAs($actor)->get('/admin')->assertForbidden();
             $this->postJson('/admin/import-incidents/retry')->assertForbidden();
         }
-        $this->withSession(['postroom.mfa_user' => $member->id])->actingAs($member)
+        $this->withSession(['webmail.mfa_user' => $member->id])->actingAs($member)
             ->postJson('/admin/import-incidents/retry')->assertForbidden();
 
         $this->owner();
@@ -254,7 +254,7 @@ class ImportIncidentTest extends TestCase
     private function owner(): void
     {
         $owner = User::factory()->withTwoFactor()->create(['role' => 'owner']);
-        $this->actingAs($owner)->withSession(['postroom.mfa_user' => $owner->id]);
+        $this->actingAs($owner)->withSession(['webmail.mfa_user' => $owner->id]);
     }
 
     /** @return array{id:string, recipient:string, raw:string, checksum:string} */

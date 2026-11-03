@@ -46,14 +46,14 @@
             "duration_display": "1.6m"
         },
         {
-            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; POSTROOM_BROWSER=webkit npm run test:e2e -- tests/e2e/workflows.spec.ts tests/e2e/review.spec.ts --grep \"themes:|help:|settings and Appearance|unfinished recipients\"'",
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; WEBMAIL_BROWSER=webkit npm run test:e2e -- tests/e2e/workflows.spec.ts tests/e2e/review.spec.ts --grep \"themes:|help:|settings and Appearance|unfinished recipients\"'",
             "result": "passed",
             "engine": "webkit",
             "tests": 5,
             "duration_seconds": 16.5
         },
         {
-            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; MOZ_APP_DATA=/Users/rishadalam/Sites/webmail/storage/app/firefox-test-data/app-data MOZ_LOCAL_APP_DATA=/Users/rishadalam/Sites/webmail/storage/app/firefox-test-data/local-data POSTROOM_BROWSER=firefox npm run test:e2e -- tests/e2e/workflows.spec.ts tests/e2e/review.spec.ts --grep \"themes:|help:|settings and Appearance|unfinished recipients\"'",
+            "command": "rtk proxy zsh -c 'source storage/app/local-env.sh; MOZ_APP_DATA=/Users/rishadalam/Sites/webmail/storage/app/firefox-test-data/app-data MOZ_LOCAL_APP_DATA=/Users/rishadalam/Sites/webmail/storage/app/firefox-test-data/local-data WEBMAIL_BROWSER=firefox npm run test:e2e -- tests/e2e/workflows.spec.ts tests/e2e/review.spec.ts --grep \"themes:|help:|settings and Appearance|unfinished recipients\"'",
             "result": "passed",
             "engine": "firefox",
             "tests": 5,
@@ -125,9 +125,9 @@
         "resources/js/pages/help/guide.tsx": "9e6227ce8c25f89b5df4231e90a70a08e1634cab9ddae8576ee8edbbd415ff01",
         "resources/js/pages/mail.tsx": "74c888990230c0136faf72c302454a1d1b7b5c31f40ea1e28fe3dc3dd7938de7",
         "resources/js/pages/auth/login.tsx": "5266f5afcdb73022eccd152423ac4cfa98c07df971ed35179c9690b754aa1f04",
-        "resources/js/components/postroom/admin-controls.tsx": "fdfe056346dcaedc4666140d24ecad4d04fdb33b209fd89dbfe5f92864a6afe6",
+        "resources/js/components/webmail/admin-controls.tsx": "fdfe056346dcaedc4666140d24ecad4d04fdb33b209fd89dbfe5f92864a6afe6",
         "resources/css/app.css": "d2fb7b46dc56e5137f4e69d663b60bea77073d36a4e6312f98e05581f16ee79e",
-        "resources/css/postroom.css": "7f63c0118bbb09d1b088b253572e575ab08de83fc2a4b179d0ed4e3a33f9848d",
+        "resources/css/webmail.css": "7f63c0118bbb09d1b088b253572e575ab08de83fc2a4b179d0ed4e3a33f9848d",
         "resources/css/themes.css": "675eff8f974ee92e3f2ac6d871ebf3fa7abca39cc532135183e8680dea163db7",
         "resources/css/guide.css": "ed69ebdb421d5ef7cc97b002f722292628e48c4b387d00cd802d7ce166cf844b",
         "routes/settings.php": "b27be4614d1d523a20eb894d7ab0a8120e568265a53a000f7656e49a6c18b403",

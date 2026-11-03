@@ -28,7 +28,7 @@ class MailController extends Controller
         $boxes = $request->user()->mailboxes()->get();
         $mailbox ??= $boxes->first();
         if (! $mailbox) {
-            return Inertia::render('mail', ['mailbox' => null, 'mailboxes' => [], 'messages' => [], 'thread' => null, 'drafts' => [], 'identities' => [], 'labels' => [], 'counts' => [], 'filters' => ['label' => null, 'category' => null], 'search_error' => null, 'pagination' => null, 'simulation' => config('postroom.provider') === 'mock']);
+            return Inertia::render('mail', ['mailbox' => null, 'mailboxes' => [], 'messages' => [], 'thread' => null, 'drafts' => [], 'identities' => [], 'labels' => [], 'counts' => [], 'filters' => ['label' => null, 'category' => null], 'search_error' => null, 'pagination' => null, 'simulation' => config('webmail.provider') === 'mock']);
         }
         Gate::authorize('view', $mailbox);
         $request->validate(['folder' => 'sometimes|in:'.implode(',', MailSearch::FOLDERS), 'q' => 'sometimes|nullable|string|max:200',
@@ -104,7 +104,7 @@ class MailController extends Controller
             'labels' => $labels->map->only(['id', 'name', 'color'])->values(), 'search_error' => $searchError,
             'filters' => ['folder' => $folder, 'q' => $q, 'unread' => $unread, 'page' => $page->currentPage(), 'label' => $label?->id, 'category' => $category],
             'pagination' => ['from' => $page->firstItem(), 'to' => $page->lastItem(), 'total' => $page->total(), 'next' => $page->nextPageUrl(), 'prev' => $page->previousPageUrl()],
-            'simulation' => config('postroom.provider') === 'mock']);
+            'simulation' => config('webmail.provider') === 'mock']);
     }
 
     public function html(Message $message, SafeMail $safe): mixed
@@ -228,6 +228,6 @@ class MailController extends Controller
 
     public function sync(ImportService $importer): mixed
     {
-        return response()->json([...$importer->sync(), 'checked_at' => now()->toIso8601String(), 'simulated' => config('postroom.provider') === 'mock']);
+        return response()->json([...$importer->sync(), 'checked_at' => now()->toIso8601String(), 'simulated' => config('webmail.provider') === 'mock']);
     }
 }

@@ -9,7 +9,7 @@
         "external_services_changed": false,
         "paid_features_activated": false,
         "shared_public_build_modified_by_this_workstream": false,
-        "main_postroom_database_migrated": false
+        "main_webmail_database_migrated": false
     },
     "full_php_suites": [
         {
@@ -23,9 +23,9 @@
             "duration_seconds": 14.339
         },
         {
-            "database": "Dedicated local PostgreSQL postroom_test",
-            "preflight": "Verified APP_ENV=testing, database.default=pgsql and select current_database()=postroom_test before the suite.",
-            "command": "rtk proxy timeout 180 docker compose exec -T -e APP_ENV=testing -e DB_CONNECTION=pgsql -e DB_DATABASE=postroom_test -e DB_URL= app php artisan test --compact",
+            "database": "Dedicated local PostgreSQL webmail_test",
+            "preflight": "Verified APP_ENV=testing, database.default=pgsql and select current_database()=webmail_test before the suite.",
+            "command": "rtk proxy timeout 180 docker compose exec -T -e APP_ENV=testing -e DB_CONNECTION=pgsql -e DB_DATABASE=webmail_test -e DB_URL= app php artisan test --compact",
             "exit_code": 0,
             "total": 217,
             "passed": 201,
@@ -207,7 +207,7 @@
             "config/inertia.php",
             "config/logging.php",
             "config/mail.php",
-            "config/postroom.php",
+            "config/webmail.php",
             "config/queue.php",
             "config/services.php",
             "config/session.php",
@@ -216,7 +216,7 @@
             "database/migrations/0001_01_01_000002_create_jobs_table.php",
             "database/migrations/2024_01_01_000000_create_passkeys_table.php",
             "database/migrations/2025_08_14_170933_add_two_factor_columns_to_users_table.php",
-            "database/migrations/2026_11_01_000001_create_postroom_tables.php",
+            "database/migrations/2026_11_01_000001_create_webmail_tables.php",
             "database/migrations/2026_11_01_000002_add_sent_message_correlation.php",
             "database/migrations/2026_11_01_000003_add_recipient_delivery_states.php",
             "database/migrations/2026_11_01_000004_create_recipient_directory_syncs.php",
@@ -287,7 +287,7 @@
             "APP_DEBUG=true",
             "DB_CONNECTION=sqlite",
             "DB_SSLMODE=disable",
-            "MAIL_DOMAIN=postroom.test"
+            "MAIL_DOMAIN=webmail.test"
         ],
         "runtime": {
             "uid": 33,
@@ -339,7 +339,7 @@
         "dump_sha256": "7706981f18632cce1a0c223619507c6d3f83b9de2d4ec4c99278e0ca10022dd7",
         "evidence_directory": "/tmp/webmail-recovery-drill-20261101-final",
         "key_handling": "Fictional fixture APP_KEY is in a separate protected local file, not committed or included in this evidence.",
-        "cleanup": "Catalog query returned 0 matching disposable databases after the drill; main postroom database untouched.",
+        "cleanup": "Catalog query returned 0 matching disposable databases after the drill; main webmail database untouched.",
         "limitations": [
             "No live Neon backup",
             "No D1 disaster-recovery drill",
@@ -368,5 +368,5 @@
         "https://www.postgresql.org/docs/current/libpq-envars.html",
         "https://www.iana.org/assignments/special-use-domain-names"
     ],
-    "php_suite_source_note": "Full PHP suites ran after the final Trash and HTML-table changes. The only subsequent production-source change was resources/js/components/postroom/compose.tsx; PHP suites were not repeated for that frontend-only change."
+    "php_suite_source_note": "Full PHP suites ran after the final Trash and HTML-table changes. The only subsequent production-source change was resources/js/components/webmail/compose.tsx; PHP suites were not repeated for that frontend-only change."
 }

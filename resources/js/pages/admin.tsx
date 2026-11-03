@@ -12,13 +12,13 @@ import {
     Users,
     X,
 } from 'lucide-react';
-import { Brand, IconButton, Sheet } from '@/components/postroom/ui';
+import { Brand, IconButton, Sheet } from '@/components/webmail/ui';
 import { api, initials } from '@/lib/mail';
 import { useMailNavigation } from '@/lib/mail-navigation';
 import {
     ImportIncidents,
     type ImportIncidentSummary,
-} from '@/components/postroom/admin-import-incidents';
+} from '@/components/webmail/admin-import-incidents';
 import {
     MailboxAdministration,
     PersonAccess,
@@ -27,7 +27,7 @@ import {
     type AdminLimits,
     type AdminMailbox,
     type DirectoryState,
-} from '@/components/postroom/admin-controls';
+} from '@/components/webmail/admin-controls';
 type Meter = {
     provider: string;
     resource: string;

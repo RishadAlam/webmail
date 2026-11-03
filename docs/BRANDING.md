@@ -6,7 +6,7 @@ The approved identity combines a connected W and envelope with the **WebMail** w
 
 ## Use in the application
 
-`resources/js/components/postroom/ui.tsx` exposes the accessible `Brand` lockup. `AppLogoIcon` shares the same PNG silhouette through an alpha mask with `currentColor`; there is no separate hand-drawn replacement. The full lockup is used by authentication, the desktop header, mobile navigation drawer, settings, administration and the public configuration guide. Offline and access-error pages carry the same identity without needing React.
+`resources/js/components/webmail/ui.tsx` exposes the accessible `Brand` lockup. `AppLogoIcon` shares the same PNG silhouette through an alpha mask with `currentColor`; there is no separate hand-drawn replacement. The full lockup is used by authentication, the desktop header, mobile navigation drawer, settings, administration and the public configuration guide. Offline and access-error pages carry the same identity without needing React.
 
 The mark uses `--brand-accent` so the six palettes and Light/Dark/System modes stay consistent. The wordmark and byline use the existing readable text tokens. Browser and installed-app icons retain white on blue `#0B57D0` for recognition. Palette changes never change the logo shape.
 

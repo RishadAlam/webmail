@@ -5,7 +5,7 @@
     "root_cause": "Docker artisan serve filtered inherited environment; its HTTP child fell back to .env SQLite while CLI checks used PostgreSQL.",
     "fix": "Explicit --no-reload for Docker, direct local and Playwright servers; no authentication-policy changes.",
     "runtime_regression": {
-        "command": "docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_auth_e2e app php scripts/verify-auth-runtime.php",
+        "command": "docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=webmail_auth_e2e app php scripts/verify-auth-runtime.php",
         "before_fix": "Failed: password request did not reach MFA for the PostgreSQL-only fixture.",
         "after_fix": "Passed: password, MFA, fresh-request admin access, logout revocation.",
         "exit_code": 0,
@@ -28,7 +28,7 @@
         "exit_code": 0
     },
     "server_postgresql": {
-        "command": "docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=postroom_test app php artisan test",
+        "command": "docker compose exec -T -e APP_ENV=testing -e DB_DATABASE=webmail_test app php artisan test",
         "passed": 55,
         "skipped": 16,
         "assertions": 233,

@@ -24,6 +24,6 @@ class StorageBudget
 
         // Logical content is not physical storage. Allow room for encryption,
         // retained payload copies, indexes and transaction/page overhead.
-        return $measured + max(65536, $logicalGrowth * 6) < config('postroom.database_stop_bytes');
+        return $measured + max(65536, $logicalGrowth * 6) < config('webmail.database_stop_bytes');
     }
 }

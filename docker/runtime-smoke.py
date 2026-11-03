@@ -54,18 +54,18 @@ with tempfile.TemporaryDirectory(prefix="webmail-runtime-review-") as directory:
     (tls / "server.key").chmod(0o600)
     database_password = base64.urlsafe_b64encode(os.urandom(24)).decode()
     pg_env = directory / "postgres.env"
-    pg_env.write_text("POSTGRES_DB=" + DATABASE + "\nPOSTGRES_USER=postroom\nPOSTGRES_PASSWORD=" + database_password + "\n")
+    pg_env.write_text("POSTGRES_DB=" + DATABASE + "\nPOSTGRES_USER=webmail\nPOSTGRES_PASSWORD=" + database_password + "\n")
     pg_env.chmod(0o600)
     envfile = directory / "runtime.env"
     envfile.write_text("\n".join([
         "APP_ENV=production", "APP_DEBUG=false", "APP_URL=https://mail.example.test",
         "APP_KEY=base64:" + base64.b64encode(os.urandom(32)).decode(),
         "MAIL_DOMAIN=fictional-mail.org", "DB_CONNECTION=pgsql", "DB_HOST=" + POSTGRES, "DB_PORT=5432", "DB_DATABASE=" + DATABASE,
-        "DB_USERNAME=postroom", "DB_PASSWORD=" + database_password, "DB_URL=", "DB_SSLMODE=verify-full",
+        "DB_USERNAME=webmail", "DB_PASSWORD=" + database_password, "DB_URL=", "DB_SSLMODE=verify-full",
         "PGSSLROOTCERT=/fixture-ca/root.crt",
         "SESSION_DRIVER=database", "SESSION_ENCRYPT=true", "SESSION_SECURE_COOKIE=true",
         "SESSION_HTTP_ONLY=true", "SESSION_SAME_SITE=lax", "CACHE_STORE=database",
-        "QUEUE_CONNECTION=database", "POSTROOM_PROVIDER=mock", "EXTERNAL_SENDING_ENABLED=false",
+        "QUEUE_CONNECTION=database", "WEBMAIL_PROVIDER=mock", "EXTERNAL_SENDING_ENABLED=false",
         "LOG_CHANNEL=stderr", "LOG_LEVEL=warning",
     ]) + "\n")
     envfile.chmod(0o600)
@@ -82,7 +82,7 @@ with tempfile.TemporaryDirectory(prefix="webmail-runtime-review-") as directory:
                 "--entrypoint", "sh", POSTGRES_IMAGE, "-c", pg_start)
         created_postgres = True
         pg_deadline = time.monotonic() + 30
-        while command("docker", "exec", POSTGRES, "pg_isready", "-U", "postroom", "-d", DATABASE, check=False).returncode:
+        while command("docker", "exec", POSTGRES, "pg_isready", "-U", "webmail", "-d", DATABASE, check=False).returncode:
             if time.monotonic() >= pg_deadline:
                 raise RuntimeError("Disposable TLS PostgreSQL did not become ready.")
             time.sleep(0.25)
@@ -130,7 +130,7 @@ with tempfile.TemporaryDirectory(prefix="webmail-runtime-review-") as directory:
         php_check = 'require "vendor/autoload.php"; echo json_encode(["uid"=>posix_geteuid(),"phpunit"=>Composer\\InstalledVersions::isInstalled("phpunit/phpunit"),"app_writable"=>is_writable("app"),"public_writable"=>is_writable("public"),"node"=>file_exists("/usr/local/bin/node"),"composer"=>file_exists("/usr/local/bin/composer")]);'
         runtime = json.loads(command("docker", "exec", CONTAINER, "php", "-r", php_check).stdout)
         assert runtime == {"uid": 33, "phpunit": False, "app_writable": False, "public_writable": False, "node": False, "composer": False}, runtime
-        for setting in ("APP_DEBUG=true", "DB_CONNECTION=sqlite", "DB_SSLMODE=disable", "MAIL_DOMAIN=postroom.test"):
+        for setting in ("APP_DEBUG=true", "DB_CONNECTION=mysql", "DB_SSLMODE=disable", "MAIL_DOMAIN=webmail.test"):
             rejected = command("docker", "run", "--rm", *common, "-e", setting, IMAGE, check=False)
             assert rejected.returncode != 0 and "Unsafe production configuration" in rejected.stdout + rejected.stderr
         command("docker", "stop", "--time", "30", CONTAINER, timeout=40)
@@ -139,7 +139,7 @@ with tempfile.TemporaryDirectory(prefix="webmail-runtime-review-") as directory:
         print(json.dumps({"result": "passed", "database": DATABASE, "health": 200, "login": 200,
                           "private_files": "blocked", "unexpected_host": 400,
                           "forwarded_host": "ignored", "private_headers": "passed",
-                          "unsafe_debug_sqlite_tls_and_domain": "rejected", "runtime": runtime,
+                          "unsafe_debug_mysql_tls_and_domain": "rejected", "runtime": runtime,
                           "postgres_tls": "verify-full with disposable CA", "wrong_hostname_and_ca": "rejected",
                           "cpu_limit": 0.1, "memory_limit_mib": 512,
                           "graceful_exit": state["ExitCode"], "oom_killed": state["OOMKilled"]}, indent=2))

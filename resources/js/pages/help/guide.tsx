@@ -1,6 +1,6 @@
 import { Head, usePage } from '@inertiajs/react';
 import { ArrowLeft, BookOpen, ChevronDown } from 'lucide-react';
-import { Brand } from '@/components/postroom/ui';
+import { Brand } from '@/components/webmail/ui';
 
 type GuideProps = {
     title: string;

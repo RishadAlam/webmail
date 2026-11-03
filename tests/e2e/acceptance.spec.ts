@@ -7,7 +7,7 @@ const scrollQuery = 'Acceptance scroll fixture';
 let authState = '';
 let mailboxURL = '';
 
-// These are real authorized requests against the disposable e2e.sqlite fixture.
+// These are real authorized requests against the disposable webmail_test fixture.
 // No provider, owner MFA, main mailbox messages, or shared auth state is used.
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -30,10 +30,10 @@ test.beforeAll(async ({ browser }, info) => {
         if (new URL(page.url()).pathname === '/login') {
             await page
                 .getByLabel('Email address', { exact: true })
-                .fill('mira@postroom.test');
+                .fill('mira@webmail.test');
             await page
                 .getByLabel('Password', { exact: true })
-                .fill('postroom-local-only');
+                .fill('webmail-local-only');
             await page
                 .getByRole('button', { name: 'Sign in', exact: true })
                 .click();

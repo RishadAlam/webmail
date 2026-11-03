@@ -76,7 +76,7 @@ class ImportService
                     $text = $mime->getTextContent() ?? strip_tags($mime->getHtmlContent() ?? '');
                     $html = $mime->getHtmlContent();
                     $bytes = strlen($raw) + strlen($text) + strlen($html ?? '') + strlen(json_encode($headers, JSON_THROW_ON_ERROR));
-                    if (! app(StorageBudget::class)->permits($bytes) || $bytes > 3 * config('postroom.max_mime_bytes') || $box->used_bytes + $bytes > $box->quota_bytes || Mailbox::sum('used_bytes') + $bytes > config('postroom.organization_bytes')) {
+                    if (! app(StorageBudget::class)->permits($bytes) || $bytes > 3 * config('webmail.max_mime_bytes') || $box->used_bytes + $bytes > $box->quota_bytes || Mailbox::sum('used_bytes') + $bytes > config('webmail.organization_bytes')) {
                         throw new ImportHeld(ImportIncidentCategory::StorageHeld);
                     }
                     $reference = $mime->getHeaderValue('In-Reply-To');
@@ -110,7 +110,7 @@ class ImportService
     private function receiptPayload(array $item): string
     {
         $raw = is_string($item['raw'] ?? null) ? base64_decode($item['raw'], true) : false;
-        if ($raw === false || strlen($raw) > config('postroom.max_mime_bytes') || ! hash_equals(hash('sha256', $raw), $item['checksum'])) {
+        if ($raw === false || strlen($raw) > config('webmail.max_mime_bytes') || ! hash_equals(hash('sha256', $raw), $item['checksum'])) {
             throw new ImportHeld(ImportIncidentCategory::ReceiptInvalid);
         }
 

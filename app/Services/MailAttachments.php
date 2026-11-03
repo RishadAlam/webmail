@@ -58,7 +58,7 @@ class MailAttachments
                 'A draft supports at most 10 attachments and 128 KiB of file contents in total.');
             $box = Mailbox::whereKey($current->mailbox_id)->lockForUpdate()->firstOrFail();
             abort_if(! app(StorageBudget::class)->permits($bytes) || $box->used_bytes + $bytes > $box->quota_bytes
-                || Mailbox::sum('used_bytes') + $bytes > config('postroom.organization_bytes'), 422,
+                || Mailbox::sum('used_bytes') + $bytes > config('webmail.organization_bytes'), 422,
                 'Mailbox storage is full. Your saved draft and attachments are unchanged.');
             DraftAttachment::create(['draft_id' => $current->id, 'name' => $name, 'type' => $type, 'size' => $size, 'logical_bytes' => $bytes, 'content' => $content]);
             app(DraftMime::class)->render($current);
@@ -90,7 +90,7 @@ class MailAttachments
     public function incoming(Message $message): array
     {
         $raw = $message->raw_mime;
-        abort_if(strlen($raw) > config('postroom.max_mime_bytes') || substr_count(strtolower($raw), 'content-type:') > 40, 422,
+        abort_if(strlen($raw) > config('webmail.max_mime_bytes') || substr_count(strtolower($raw), 'content-type:') > 40, 422,
             'Attachment extraction exceeds this pilot’s safety limits. The original message is retained.');
         try {
             $mime = (new MailMimeParser)->parse($raw, false);
@@ -115,9 +115,9 @@ class MailAttachments
             $total = 0;
             foreach ($parts as $index => $part) {
                 $stream = $part->getBinaryContentStream();
-                $content = $stream?->read((int) config('postroom.max_mime_bytes') + 1) ?? '';
+                $content = $stream?->read((int) config('webmail.max_mime_bytes') + 1) ?? '';
                 $total += strlen($content);
-                if ($total > config('postroom.max_mime_bytes')) {
+                if ($total > config('webmail.max_mime_bytes')) {
                     throw new \RuntimeException('Decoded attachment size limit.');
                 }
                 $type = strtolower($part->getContentType() ?? 'application/octet-stream');

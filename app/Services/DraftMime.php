@@ -19,7 +19,7 @@ class DraftMime
         // is used only for the encoded-size check; sending validates real recipients.
         $mime = (new Email)->from($draft->from_email)->to(...($draft->to ?: ['draft@example.invalid']))
             ->subject($draft->subject)->text($text)->html($html);
-        $mime->getHeaders()->addIdHeader('Message-ID', $intentId.'@'.config('postroom.domain'));
+        $mime->getHeaders()->addIdHeader('Message-ID', $intentId.'@'.config('webmail.domain'));
         if ($draft->cc) {
             $mime->cc(...$draft->cc);
         }
@@ -42,7 +42,7 @@ class DraftMime
             $attachments[] = ['filename' => $file->name, 'content' => base64_encode($content)];
         }
         $raw = $mime->toString();
-        abort_if(strlen($raw) > config('postroom.max_mime_bytes'), 422,
+        abort_if(strlen($raw) > config('webmail.max_mime_bytes'), 422,
             'The complete encoded message exceeds 256 KiB. Shorten it or remove an attachment; your saved draft is retained.');
 
         return compact('raw', 'html', 'text', 'attachments');
