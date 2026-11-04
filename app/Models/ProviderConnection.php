@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Model;
  */
 class ProviderConnection extends Model
 {
+    // This singleton uses the explicit ID 1, not a database-generated ID.
+    public $incrementing = false;
+
     protected $guarded = [];
 
     protected $hidden = ['settings'];

@@ -226,3 +226,23 @@
         flex-wrap: wrap;
     }
 }
+
+.guide-prose img {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 24px 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+}
+
+.guide-reference-links {
+    margin-top: 12px;
+}
+.guide-reference-links summary {
+    cursor: pointer;
+    padding: 12px 10px;
+    line-height: 1.5;
+    font-weight: 600;
+}

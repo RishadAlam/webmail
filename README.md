@@ -78,7 +78,7 @@ docker compose up -d
 
 Open [WebMail locally](http://localhost:8082). Normal restarts only need `docker compose up -d`. Do not use `down -v` unless you intend to delete the local database. This is not a Render production image.
 
-The fictional demo member is `mira@webmail.test`, password `webmail-local-only`. The fictional owner is `owner@webmail.test`, with the same password and the local-only authenticator seed `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`. The demo recovery code is `fictional-recovery-code`. These are public fixtures, never production credentials. The seed refuses to run outside local/testing mock mode. The owner cannot read Mira's mailbox.
+The fictional demo member is `mira@webmail.test`, password `password`. The fictional owner is `owner@webmail.test`, with the same password and the local-only authenticator seed `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`. The demo recovery code is `fictional-recovery-code`. These are public fixtures, never production credentials. The seed refuses to run outside local/testing mock mode. The owner cannot read Mira's mailbox.
 
 ## Direct local profile
 

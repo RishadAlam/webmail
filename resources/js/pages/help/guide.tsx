@@ -11,11 +11,31 @@ type GuideProps = {
 
 export default function Guide({ title, html, contents, guide }: GuideProps) {
     const signedIn = Boolean(usePage().props.auth.user);
-    const links = contents.map((item) => (
-        <a key={item.id} href={`#${item.id}`}>
-            {item.title}
-        </a>
-    ));
+    const referenceStart =
+        guide === 'setup'
+            ? contents.findIndex((item) => item.id === 'personalize-your-mail')
+            : -1;
+    const makeLinks = (items: GuideProps['contents']) =>
+        items.map((item) => (
+            <a key={item.id} href={`#${item.id}`}>
+                {item.title}
+            </a>
+        ));
+    const links = (
+        <>
+            {makeLinks(
+                referenceStart < 0
+                    ? contents
+                    : contents.slice(0, referenceStart),
+            )}
+            {referenceStart >= 0 && (
+                <details className="guide-reference-links">
+                    <summary>Installation and reference</summary>
+                    {makeLinks(contents.slice(referenceStart))}
+                </details>
+            )}
+        </>
+    );
     return (
         <div className="guide-page">
             <Head title={title} />
@@ -47,7 +67,7 @@ export default function Guide({ title, html, contents, guide }: GuideProps) {
                         <h1>{title}</h1>
                         <p>
                             {guide === 'setup'
-                                ? 'From your first sign-in to connecting your own domain.'
+                                ? 'Plain-language steps, illustrated examples and help finding every access code.'
                                 : 'A reference for the person managing your WebMail installation.'}
                         </p>
                     </header>

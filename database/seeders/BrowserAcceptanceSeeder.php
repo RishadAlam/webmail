@@ -28,7 +28,7 @@ class BrowserAcceptanceSeeder extends Seeder
             // deliberate failed logins cannot throttle mailbox regressions.
             $signInUser = User::factory()->create([
                 'name' => 'Fictional Sign-in Reviewer', 'email' => 'signin@webmail.test',
-                'password' => 'webmail-local-only', 'role' => 'member', 'active' => true,
+                'password' => 'password', 'role' => 'member', 'active' => true,
             ]);
             $signInMailbox = Mailbox::create(['name' => 'Sign-in Review', 'email' => $signInUser->email]);
             $signInMailbox->users()->attach($signInUser->id, ['can_send' => false]);

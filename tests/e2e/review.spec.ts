@@ -23,7 +23,7 @@ async function login(
     await page.getByLabel('Email address', { exact: true }).fill(email);
     await page
         .getByLabel('Password', { exact: true })
-        .fill('webmail-local-only');
+        .fill('password');
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL(
         email.startsWith('owner') ? /two-factor-challenge/ : /\/mail/,
@@ -98,7 +98,7 @@ test('review: draft and search survive account security confirmation and return'
         .click();
     await page
         .getByLabel('Password', { exact: true })
-        .fill('webmail-local-only');
+        .fill('password');
     await page
         .getByRole('button', { name: 'Confirm password', exact: true })
         .click();
@@ -429,7 +429,7 @@ test('review: owner manages aliases, quotas, directory and masked connections on
     if (page.url().includes('confirm-password')) {
         await page
             .getByLabel('Password', { exact: true })
-            .fill('webmail-local-only');
+            .fill('password');
         await page
             .getByRole('button', { name: 'Confirm password', exact: true })
             .click();
@@ -437,7 +437,7 @@ test('review: owner manages aliases, quotas, directory and masked connections on
     await expect(page).toHaveURL(/admin\/connection-settings/);
     const fictionalKey = 'fixture-only-not-a-real-cloudflare-token';
     await page
-        .getByLabel('Cloudflare inspection token', { exact: true })
+        .getByLabel('Cloudflare domain-check token', { exact: true })
         .fill(fictionalKey);
     const saved = page.waitForResponse(
         (response) =>
@@ -451,7 +451,7 @@ test('review: owner manages aliases, quotas, directory and masked connections on
     expect(response.status()).toBe(200);
     expect(await response.text()).not.toContain(fictionalKey);
     await expect(
-        page.getByLabel('Cloudflare inspection token', { exact: true }),
+        page.getByLabel('Cloudflare domain-check token', { exact: true }),
     ).toHaveValue('');
     const accessCheck = page.waitForResponse(
         (result) =>
@@ -471,8 +471,8 @@ test('review: owner manages aliases, quotas, directory and masked connections on
     await expect(
         page
             .locator('.readiness-row')
-            .filter({ hasText: 'Cloudflare zone inspection' })
-            .getByText('mock', { exact: true }),
+            .filter({ hasText: 'Cloudflare domain settings' })
+            .getByText('Demo only — no live account checked', { exact: true }),
     ).toBeVisible();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     expect(
@@ -486,7 +486,7 @@ test('review: owner manages aliases, quotas, directory and masked connections on
     });
     await page
         .getByRole('button', {
-            name: 'Clear cloudflare inspection token',
+            name: 'Clear cloudflare domain-check token',
             exact: true,
         })
         .click();

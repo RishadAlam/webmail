@@ -16,9 +16,9 @@ class DemoSeeder extends Seeder
         if (! app()->environment('local', 'testing') || config('webmail.provider') !== 'mock') {
             throw new \RuntimeException('Fictional seed is local/mock only.');
         }
-        $mira = User::firstOrCreate(['email' => 'mira@webmail.test'], ['name' => 'Mira Chen', 'password' => Hash::make('webmail-local-only')]);
+        $mira = User::firstOrCreate(['email' => 'mira@webmail.test'], ['name' => 'Mira Chen', 'password' => Hash::make('password')]);
         $mira->forceFill(['email_verified_at' => now()])->save();
-        $owner = User::firstOrCreate(['email' => 'owner@webmail.test'], ['name' => 'Alex Morgan', 'password' => Hash::make('webmail-local-only')]);
+        $owner = User::firstOrCreate(['email' => 'owner@webmail.test'], ['name' => 'Alex Morgan', 'password' => Hash::make('password')]);
         $owner->forceFill(['role' => 'owner', 'email_verified_at' => now(), 'two_factor_secret' => encrypt('JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP'), 'two_factor_recovery_codes' => encrypt(json_encode(['fictional-recovery-code'])), 'two_factor_confirmed_at' => now()])->save();
         $box = Mailbox::firstOrCreate(['email' => $mira->email], ['name' => 'Mira Chen']);
         $box->users()->syncWithoutDetaching([$mira->id => ['can_send' => true]]);

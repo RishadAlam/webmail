@@ -17,7 +17,7 @@ test.beforeAll(async ({ browser }) => {
         .fill('mira@webmail.test');
     await page
         .getByLabel('Password', { exact: true })
-        .fill('webmail-local-only');
+        .fill('password');
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(
         page.getByRole('heading', { name: 'Inbox', exact: true }),
@@ -455,7 +455,7 @@ test('mobile owner can create and suspend a local account, usage is honest', asy
         .fill('owner@webmail.test');
     await page
         .getByLabel('Password', { exact: true })
-        .fill('webmail-local-only');
+        .fill('password');
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL(/two-factor-challenge/);
     // Fixed fictional seed secret, never a provider or production credential.
@@ -550,7 +550,7 @@ test('logout invalidates private history and account switching isolates mail', a
         .fill('owner@webmail.test');
     await page
         .getByLabel('Password', { exact: true })
-        .fill('webmail-local-only');
+        .fill('password');
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await page.locator('input[name="code"]').fill(await fixtureTotp());
     await page.getByRole('button', { name: 'Continue', exact: true }).click();

@@ -2979,3 +2979,48 @@ progress::-moz-progress-bar {
         flex-direction: column;
     }
 }
+
+/* Connection setup uses the existing admin form, with help beside each value. */
+.connection-group {
+    min-width: 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+    padding: 20px 0 8px;
+}
+.connection-group legend {
+    padding: 0 12px 0 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+.connection-group > .field-help {
+    margin-bottom: 20px;
+}
+.connection-group .connection-field {
+    padding-block: 16px 24px;
+    border-bottom: 0;
+}
+.connection-help {
+    font-size: 0.875rem;
+    line-height: 1.65;
+}
+.connection-help summary {
+    cursor: pointer;
+    color: var(--brand-accent);
+    min-height: 44px;
+    display: list-item;
+    align-content: center;
+}
+.connection-help ol {
+    list-style: decimal;
+    padding-left: 24px;
+}
+.connection-help li {
+    margin-bottom: 8px;
+}
+.connection-help[open] {
+    padding-bottom: 12px;
+}
+.connection-help a {
+    display: inline-block;
+    padding: 10px 0;
+}

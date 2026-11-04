@@ -33,7 +33,7 @@ test.beforeAll(async ({ browser }, info) => {
                 .fill('mira@webmail.test');
             await page
                 .getByLabel('Password', { exact: true })
-                .fill('webmail-local-only');
+                .fill('password');
             await page
                 .getByRole('button', { name: 'Sign in', exact: true })
                 .click();

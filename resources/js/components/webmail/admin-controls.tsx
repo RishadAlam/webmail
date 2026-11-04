@@ -707,30 +707,111 @@ type ConnectionState = {
 const fieldLabels: [ConnectionField, string, string][] = [
     [
         'worker_url',
-        'Ingress Worker URL',
-        'The HTTPS endpoint of your deployed Worker.',
+        'Incoming mail service address',
+        'The web address of your Cloudflare Worker — the small service that receives mail for WebMail.',
     ],
     [
         'worker_secret',
-        'Ingress shared secret',
-        'Must match the secret installed on the Worker.',
+        'Incoming mail password',
+        'A private password shared by WebMail and your Cloudflare Worker so they can trust each other. This is not your sign-in password.',
     ],
     [
         'resend_key',
-        'Resend sending key',
-        'A sending-only key scoped to your domain. Saving it does not enable sending.',
+        'Resend sending API key',
+        'Lets WebMail send email through your Resend account. An API key is a private access code for an app.',
     ],
     [
         'resend_management_key',
-        'Resend management key',
-        'A full-access key is required for the documented usage endpoint.',
+        'Resend usage API key',
+        'Lets WebMail check how much of your sending allowance is left. Resend requires a separate key with Full access for this.',
     ],
     [
         'cloudflare_token',
-        'Cloudflare inspection token',
-        'Scope Zone Read and DNS Read to your business zone.',
+        'Cloudflare domain-check token',
+        'Lets WebMail read your domain settings in Cloudflare. A token is a private access code; this one needs read-only permissions.',
     ],
 ];
+const connectionHelp: Record<
+    ConnectionField,
+    { section: string; technical: string; steps: string[] }
+> = {
+    worker_url: {
+        section: 'find-your-incoming-mail-service-address',
+        technical: 'Ingress Worker URL / INGRESS_WORKER_URL',
+        steps: [
+            'Open Cloudflare → Workers & Pages and select the deployed webmail-ingress Worker.',
+            'Open Settings → Domains & Routes. Copy its enabled HTTPS address, not the dashboard address or a preview URL.',
+            'Paste only the address, for example https://webmail-ingress.your-account.workers.dev. Leave out /webhooks/resend and other paths.',
+        ],
+    },
+    worker_secret: {
+        section: 'create-your-incoming-mail-password',
+        technical: 'Ingress shared secret / INGRESS_SECRET',
+        steps: [
+            'For a new installation, generate a random password of at least 32 characters with no spaces in your password manager.',
+            'In Cloudflare, open your Worker → Settings → Variables and Secrets → Add. Choose Secret, name it INGRESS_SECRET, paste the password and deploy the change.',
+            'Paste that same password here. If already set up, use the saved password from your password manager; Cloudflare cannot show it again. Replacing it requires updating both places.',
+        ],
+    },
+    resend_key: {
+        section: 'get-your-resend-sending-key',
+        technical: 'RESEND_SENDING_KEY',
+        steps: [
+            'Open Resend → API Keys and create an API key named WebMail sending.',
+            'Choose Sending access and restrict it to your verified sending domain.',
+            'Copy the new key, save it in your password manager and paste it here. Saving it does not turn on sending.',
+        ],
+    },
+    resend_management_key: {
+        section: 'get-your-resend-usage-key',
+        technical: 'Resend management key / RESEND_MANAGEMENT_KEY',
+        steps: [
+            'Open Resend → API Keys and create another API key named WebMail usage.',
+            'Choose Full access. This key has broader permissions even though WebMail uses it to read usage.',
+            'Save the new key in your password manager, paste it here, then save and select Check Resend usage below.',
+        ],
+    },
+    cloudflare_token: {
+        section: 'get-your-cloudflare-domain-check-token',
+        technical: 'Cloudflare inspection token / CLOUDFLARE_API_TOKEN',
+        steps: [
+            'Open Cloudflare → My Profile → API Tokens → Create Token → Create Custom Token.',
+            'Add Zone → Zone → Read and Zone → DNS → Read. Under Zone Resources, choose Include → Specific zone → your mail domain.',
+            'Continue to summary, create the token, save it in your password manager and paste it here. Do not use a Global API Key or grant Edit access.',
+        ],
+    },
+};
+const connectionGroups: {
+    title: string;
+    description: string;
+    fields: ConnectionField[];
+}[] = [
+    {
+        title: '1. Receive email with Cloudflare',
+        description:
+            'You need a deployed WebMail Worker first. If someone installed WebMail for you, ask them for these two values.',
+        fields: ['worker_url', 'worker_secret'],
+    },
+    {
+        title: '2. Send email with Resend',
+        description:
+            'Create two keys in your Resend account: one to send mail and one to check your allowance.',
+        fields: ['resend_key', 'resend_management_key'],
+    },
+    {
+        title: '3. Check your domain settings',
+        description:
+            'Give WebMail permission to read the settings for your mail domain in Cloudflare.',
+        fields: ['cloudflare_token'],
+    },
+];
+const checkLabels: Record<string, string> = {
+    mock: 'Demo only — no live account checked',
+    not_configured: 'Add and save the access code first',
+    unchecked: 'Saved — not checked yet',
+    checked: 'Access check passed — mail delivery still needs testing',
+    failed: 'Could not connect — review the access code and permissions',
+};
 const emptyValues = {
     worker_url: '',
     worker_secret: '',
@@ -787,15 +868,16 @@ export function ProviderConnections({ owner }: { owner: boolean }) {
     return (
         <>
             <p className="section-intro">
-                Connect the owner’s provider accounts. Ordinary users only need
-                their WebMail account.{' '}
+                Set up receiving and sending for your team. Only the owner needs
+                Cloudflare and Resend accounts; team members just sign in to
+                WebMail.{' '}
                 <a
-                    href="/help/setup#save-connections-in-webmail"
+                    href="/help/setup#connect-your-own-domain-start-here"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="setup-guide-link"
                 >
-                    Setup guide{' '}
+                    Start the step-by-step guide{' '}
                     <span className="sr-only">(opens in a new tab)</span>
                 </a>
             </p>
@@ -803,13 +885,13 @@ export function ProviderConnections({ owner }: { owner: boolean }) {
                 <div>
                     <strong>
                         {state?.mode === 'mock'
-                            ? 'Local provider simulation'
+                            ? 'Demo mode — no real email'
                             : 'Connection setup'}
                     </strong>
                     <p>
                         {state?.mode === 'mock'
-                            ? 'Checks use deterministic adapters. No provider account or delivery is verified.'
-                            : 'Read-only access checks do not verify DNS, receiving or email delivery.'}{' '}
+                            ? 'You can explore this page without adding real keys. Checks are simulated and do not contact Cloudflare or Resend.'
+                            : 'Add your account access codes below. Saving does not verify them; run the access checks next, then test receiving and sending separately.'}{' '}
                         Sending is{' '}
                         {state?.sending_enabled
                             ? 'enabled in deployment configuration'
@@ -841,65 +923,143 @@ export function ProviderConnections({ owner }: { owner: boolean }) {
                             ) {
                                 setValues(emptyValues);
                                 setMessage(
-                                    'Connection settings saved. Run the relevant checks before live verification.',
+                                    'Connection settings saved. Next, run the access checks below. Receiving and sending still need a separate email test.',
                                 );
                             }
                         }}
                     >
-                        {fieldLabels.map(([field, label, help]) => (
-                            <div className="connection-field" key={field}>
-                                <label htmlFor={`connection-${field}`}>
-                                    {label}
-                                </label>
-                                <p className="field-help">{help}</p>
-                                <div className="connection-state">
-                                    <span>
-                                        {state.fields[field].configured
-                                            ? `Configured · ${state.fields[field].source}`
-                                            : 'Not configured'}
-                                    </span>
-                                    {state.fields[field].configured && (
-                                        <button
-                                            type="button"
-                                            className="text-button"
-                                            disabled={busy}
-                                            onClick={() => setRemove(field)}
+                        {connectionGroups.map((group) => (
+                            <fieldset
+                                className="connection-group"
+                                key={group.title}
+                            >
+                                <legend>{group.title}</legend>
+                                <p className="field-help">
+                                    {group.description}
+                                </p>
+                                {fieldLabels
+                                    .filter(([field]) =>
+                                        group.fields.includes(field),
+                                    )
+                                    .map(([field, label, help]) => (
+                                        <div
+                                            className="connection-field"
+                                            key={field}
                                         >
-                                            Clear {label.toLowerCase()}
-                                        </button>
-                                    )}
-                                </div>
-                                {field === 'worker_url' &&
-                                    state.fields.worker_url.value && (
-                                        <p className="break-anywhere">
-                                            {state.fields.worker_url.value}
-                                        </p>
-                                    )}
-                                <input
-                                    id={`connection-${field}`}
-                                    disabled={busy}
-                                    type={
-                                        field === 'worker_url'
-                                            ? 'url'
-                                            : 'password'
-                                    }
-                                    value={values[field]}
-                                    onChange={(event) =>
-                                        setValues({
-                                            ...values,
-                                            [field]: event.target.value,
-                                        })
-                                    }
-                                    autoComplete="off"
-                                    spellCheck={false}
-                                    maxLength={2048}
-                                    placeholder={
-                                        state.fields[field].configured
-                                            ? 'Leave blank to keep the current value'
-                                            : 'Enter a value'
-                                    }
-                                />
-                            </div>
+                                            <label
+                                                htmlFor={`connection-${field}`}
+                                            >
+                                                {label}
+                                            </label>
+                                            <p
+                                                className="field-help"
+                                                id={`connection-${field}-help`}
+                                            >
+                                                {help}
+                                            </p>
+                                            <details className="connection-help">
+                                                <summary>
+                                                    Where do I find this?
+                                                </summary>
+                                                <ol>
+                                                    {connectionHelp[
+                                                        field
+                                                    ].steps.map((step) => (
+                                                        <li key={step}>
+                                                            {step}
+                                                        </li>
+                                                    ))}
+                                                </ol>
+                                                <p className="field-help">
+                                                    Technical name:{' '}
+                                                    {
+                                                        connectionHelp[field]
+                                                            .technical
+                                                    }
+                                                </p>
+                                                <a
+                                                    className="inline-link"
+                                                    href={`/help/setup#${connectionHelp[field].section}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    Open illustrated
+                                                    instructions
+                                                    <span className="sr-only">
+                                                        {' '}
+                                                        (opens in a new tab)
+                                                    </span>
+                                                </a>
+                                            </details>
+                                            <div className="connection-state">
+                                                <span>
+                                                    {state.fields[field]
+                                                        .configured
+                                                        ? state.fields[field]
+                                                              .source ===
+                                                          'environment'
+                                                            ? 'Provided by your installation'
+                                                            : 'Saved'
+                                                        : 'Not added yet'}
+                                                </span>
+                                                {state.fields[field]
+                                                    .configured && (
+                                                    <button
+                                                        type="button"
+                                                        className="text-button"
+                                                        disabled={busy}
+                                                        onClick={() =>
+                                                            setRemove(field)
+                                                        }
+                                                    >
+                                                        Clear{' '}
+                                                        {label.toLowerCase()}
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {field === 'worker_url' &&
+                                                state.fields.worker_url
+                                                    .value && (
+                                                    <p className="break-anywhere">
+                                                        {
+                                                            state.fields
+                                                                .worker_url
+                                                                .value
+                                                        }
+                                                    </p>
+                                                )}
+                                            <input
+                                                id={`connection-${field}`}
+                                                aria-describedby={`connection-${field}-help`}
+                                                disabled={busy}
+                                                type={
+                                                    field === 'worker_url'
+                                                        ? 'url'
+                                                        : 'password'
+                                                }
+                                                value={values[field]}
+                                                onChange={(event) =>
+                                                    setValues({
+                                                        ...values,
+                                                        [field]:
+                                                            event.target.value,
+                                                    })
+                                                }
+                                                autoComplete="off"
+                                                spellCheck={false}
+                                                maxLength={2048}
+                                                placeholder={
+                                                    state.fields[field]
+                                                        .configured
+                                                        ? 'Leave blank to keep the current value'
+                                                        : field === 'worker_url'
+                                                          ? 'https://webmail-ingress.your-account.workers.dev'
+                                                          : 'Paste your private access code'
+                                                }
+                                            />
+                                        </div>
+                                    ))}
+                            </fieldset>
                         ))}
                         <p className="field-help">
                             Secrets are encrypted on the server and never
@@ -910,7 +1070,12 @@ export function ProviderConnections({ owner }: { owner: boolean }) {
                             {busy ? 'Working…' : 'Save connections'}
                         </button>
                     </form>
-                    <h2>Read-only access checks</h2>
+                    <h2>4. Check the saved connections</h2>
+                    <p className="field-help">
+                        Save your changes first. These checks read account
+                        information; they do not send an email or change your
+                        domain.
+                    </p>
                     {(['resend_management', 'cloudflare'] as const).map(
                         (connection) => (
                             <div className="readiness-row" key={connection}>
@@ -918,10 +1083,12 @@ export function ProviderConnections({ owner }: { owner: boolean }) {
                                     <strong>
                                         {connection === 'resend_management'
                                             ? 'Resend usage access'
-                                            : 'Cloudflare zone inspection'}
+                                            : 'Cloudflare domain settings'}
                                     </strong>
                                     <p>
-                                        {state.checks[connection].status}
+                                        {checkLabels[
+                                            state.checks[connection].status
+                                        ] ?? 'Check status unavailable'}
                                         {state.checks[connection].checked_at &&
                                             ` · ${new Date(state.checks[connection].checked_at!).toLocaleString()}`}
                                     </p>
@@ -960,18 +1127,19 @@ export function ProviderConnections({ owner }: { owner: boolean }) {
                 before saving. Keep any unsubmitted credentials in your password
                 manager.
             </p>
-            <h2>Deployment and DNS</h2>
+            <h2>What happens after this?</h2>
             <p>
-                Provider signup, the initial Worker and application deployment,
-                the application key and database connection are owner bootstrap
-                steps. No DNS or routing changes are made here. Existing DNS
-                must be reviewed as an exact diff and explicitly approved before
-                applying changes.
+                Add your team’s mailboxes, then use Synchronize addresses so the
+                receiving service knows which addresses to accept. After that,
+                follow the guide to switch incoming mail and test delivery.
+                Saving this form does not change where your domain receives
+                mail.
             </p>
             <p className="field-help">
-                Live receiving, sending, webhook delivery and account free-tier
-                limits remain separate verification steps. See the deployment
-                runbook before enabling external sending.
+                New installation? A technical administrator must first deploy
+                WebMail and its Cloudflare Worker. The guide explains this
+                handoff and the domain changes to review before switching mail
+                services.
             </p>
             <Sheet
                 open={!!remove}

@@ -35,7 +35,10 @@ class ThemesAndHelpTest extends TestCase
             $this->actingAs($user)->putJson('/preferences', ['palette' => $palette, 'theme' => 'light'])
                 ->assertUnprocessable()->assertJsonValidationErrors('palette');
         }
-        $this->assertSame(['palette' => 'forest', 'theme' => 'dark'], $user->fresh()->preferences);
+        $preferences = $user->fresh()->preferences;
+        // JSON object key order is not preserved by every database driver.
+        ksort($preferences);
+        $this->assertSame(['palette' => 'forest', 'theme' => 'dark'], $preferences);
         auth()->forgetGuards();
         $this->putJson('/preferences', ['palette' => 'ocean'])->assertUnauthorized();
     }
